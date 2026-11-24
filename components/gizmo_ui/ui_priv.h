@@ -11,6 +11,7 @@
  *  - ui_settings.c settings screen with tabs
  *  - ui_display.c  "Display" tab (brightness)
  *  - ui_network.c  "Network" tab (Wi-Fi scan/connect, password entry, timezone)
+ *  - ui_i2c.c      "I2C" screen (internal bus scan)
  */
 
 #include "gizmo_core.h"
@@ -55,6 +56,7 @@ void ui_status_start(void);
 
 void ui_show_home(void);
 void ui_show_settings(void);
+void ui_show_i2c(void);
 
 /** Point the encoder (if present) at group. */
 void ui_use_group(lv_group_t *group);
@@ -77,6 +79,11 @@ void ui_settings_refresh_group(void);
 void ui_settings_on_show(void);
 
 void ui_display_tab_create(lv_obj_t *page);
+
+lv_obj_t *ui_i2c_create(void);
+lv_group_t *ui_i2c_group(void);
+/** Called each time the I2C screen is shown (rescans the bus). */
+void ui_i2c_on_show(void);
 void ui_network_tab_create(lv_obj_t *page);
 /** Called when the Network tab becomes visible. */
 void ui_network_tab_shown(void);

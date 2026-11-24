@@ -6,6 +6,12 @@ static void open_settings_cb(lv_event_t *e)
     ui_show_settings();
 }
 
+static void open_i2c_cb(lv_event_t *e)
+{
+    (void)e;
+    ui_show_i2c();
+}
+
 /** Launcher icon: rounded button with a symbol, caption underneath. */
 static lv_obj_t *create_app_icon(lv_obj_t *parent, lv_group_t *group, const char *symbol,
                                  const char *name, lv_event_cb_t cb)
@@ -61,5 +67,6 @@ lv_obj_t *ui_home_create(lv_group_t *group)
     lv_obj_set_flex_align(grid, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
 
     create_app_icon(grid, group, LV_SYMBOL_SETTINGS, "Settings", open_settings_cb);
+    create_app_icon(grid, group, LV_SYMBOL_LIST, "I2C", open_i2c_cb);
     return scr;
 }

@@ -7,6 +7,7 @@ static const char *TAG = "ui";
 
 static lv_obj_t *s_home_scr;
 static lv_obj_t *s_settings_scr;
+static lv_obj_t *s_i2c_scr;
 static lv_group_t *s_home_group;
 
 /* ---------- encoder groups ---------- */
@@ -96,6 +97,13 @@ void ui_show_settings(void)
     lv_screen_load_anim(s_settings_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
 }
 
+void ui_show_i2c(void)
+{
+    ui_i2c_on_show();
+    ui_use_group(ui_i2c_group());
+    lv_screen_load_anim(s_i2c_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
+}
+
 /* ---------- public ---------- */
 
 void gizmo_ui_init(void)
@@ -105,6 +113,7 @@ void gizmo_ui_init(void)
     s_home_group = lv_group_create();
     s_home_scr = ui_home_create(s_home_group);
     s_settings_scr = ui_settings_create();
+    s_i2c_scr = ui_i2c_create();
 
     ui_status_start();
     ui_use_group(s_home_group);

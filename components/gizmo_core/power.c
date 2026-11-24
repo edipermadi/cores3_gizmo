@@ -128,10 +128,20 @@ static void clear_irqs(void)
 void power_off(void)
 {
     ESP_LOGW(TAG, "Powering off");
-    /* Backlight off first so the screen goes dark immediately, then cut power. */
-    bsp_display_brightness_set(0);
+
+    /* Quiesce the I2C bus first. Touch and Module HMI are polled from the LVGL
+     * task; holding its lock guarantees neither is mid-transfer when power is
+     * cut. A stacked module whose MCU stays powered and is interrupted
+     * mid-transfer can hold SCL low until the RST button is pressed, leaving
+     * the next boot stuck on a white screen. */
+    bool locked = bsp_display_lock(500);
+    if (!locked) {
+        ESP_LOGW(TAG, "LVGL lock timeout; powering off anyway");
+    }
+
+    /* Backlight off so the screen goes dark immediately, then cut power. */
     bsp_display_backlight_off();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     uint8_t cfg = 0;
     axp_read(REG_COMMON_CFG, &cfg);
@@ -140,6 +150,9 @@ void power_off(void)
     /* Still running: USB power can keep the system up on some boards. */
     vTaskDelay(pdMS_TO_TICKS(1000));
     ESP_LOGW(TAG, "Power-off did not take effect (external power?)");
+    if (locked) {
+        bsp_display_unlock();
+    }
 }
 
 /** True once if the power key was short-pressed since the last check. */

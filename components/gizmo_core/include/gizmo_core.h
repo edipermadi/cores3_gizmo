@@ -153,6 +153,20 @@ esp_err_t gizmo_core_tz_set(int index);
 void gizmo_core_power_off(void);
 
 /**
+ * @brief Probe every 7-bit address (0x08-0x77) on the internal I2C bus.
+ *
+ * Blocks for roughly 100-300 ms. Call from the UI on demand, not every frame.
+ *
+ * @param addrs Receives the responding addresses in ascending order.
+ * @param max   Capacity of addrs.
+ * @return Number of devices found, or -1 if the bus is not available.
+ */
+int gizmo_core_i2c_scan(uint8_t *addrs, int max);
+
+/** Known device name for an internal-bus address, or NULL if unknown. */
+const char *gizmo_core_i2c_device_name(uint8_t addr);
+
+/**
  * @brief LVGL encoder input from the Module HMI.
  *
  * Rotate = next/prev (or change value when editing), encoder push = enter,

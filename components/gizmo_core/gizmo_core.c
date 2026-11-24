@@ -2,8 +2,11 @@
 
 #include "bsp/esp-bsp.h"
 #include "driver/gpio.h"
+#include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_rom_sys.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "hmi.h"
 #include "power.h"
@@ -27,13 +30,39 @@ static int clamp_brightness(int percent)
     return percent;
 }
 
+#define I2C_BUS_WAIT_MS   5000   /* how long to wait for a busy bus at boot */
+#define I2C_BUS_RETRY_MS  50
+
+/** One bus-recovery attempt: 9 SCL clocks while SDA is low, then a STOP. */
+static bool i2c_bus_recover_once(gpio_num_t sda, gpio_num_t scl)
+{
+    gpio_set_level(sda, 1);
+    gpio_set_level(scl, 1);
+    esp_rom_delay_us(50);
+    if (gpio_get_level(scl) && gpio_get_level(sda)) {
+        return true;
+    }
+    for (int i = 0; i < 9 && !gpio_get_level(sda); i++) {
+        gpio_set_level(scl, 0);
+        esp_rom_delay_us(5);
+        gpio_set_level(scl, 1);
+        esp_rom_delay_us(5);
+    }
+    gpio_set_level(sda, 0);
+    esp_rom_delay_us(5);
+    gpio_set_level(sda, 1);
+    esp_rom_delay_us(5);
+    return gpio_get_level(scl) && gpio_get_level(sda);
+}
+
 /**
- * Check the internal I2C bus is idle before the BSP uses it.
+ * Wait for the internal I2C bus to be idle before the BSP uses it.
  *
- * After a USB (esptool) reset the ESP32-S3 restarts but bus devices do not,
- * and one left mid-transfer can hold SCL low. The BSP then fails its first
- * PMIC write with ESP_ERROR_CHECK and the board boot-loops on a white screen.
- * Try the standard 9-clock recovery; if SCL is still held, report it clearly.
+ * A device on the bus can hold SCL low: after a USB (esptool) reset because
+ * bus devices are not reset, and after power-on while a device (e.g. a stacked
+ * module's MCU) is still starting up. The BSP's first PMIC write would then
+ * fail with ESP_ERROR_CHECK. Retry recovery for up to I2C_BUS_WAIT_MS and log
+ * how long the bus took to free up.
  */
 static esp_err_t check_i2c_bus(void)
 {
@@ -45,37 +74,31 @@ static esp_err_t check_i2c_bus(void)
         .pull_up_en = GPIO_PULLUP_ENABLE,
     };
     gpio_config(&io);
-    gpio_set_level(sda, 1);
-    gpio_set_level(scl, 1);
-    esp_rom_delay_us(50);
 
-    if (gpio_get_level(scl) && gpio_get_level(sda)) {
-        return ESP_OK;
+    int waited = 0;
+    bool ok = i2c_bus_recover_once(sda, scl);
+    if (!ok) {
+        ESP_LOGW(TAG, "I2C bus busy (SDA=%d SCL=%d), waiting up to %d ms",
+                 gpio_get_level(sda), gpio_get_level(scl), I2C_BUS_WAIT_MS);
+    }
+    while (!ok && waited < I2C_BUS_WAIT_MS) {
+        vTaskDelay(pdMS_TO_TICKS(I2C_BUS_RETRY_MS));
+        waited += I2C_BUS_RETRY_MS;
+        ok = i2c_bus_recover_once(sda, scl);
     }
 
-    ESP_LOGW(TAG, "I2C bus busy (SDA=%d SCL=%d), attempting recovery",
-             gpio_get_level(sda), gpio_get_level(scl));
-    for (int i = 0; i < 9 && !gpio_get_level(sda); i++) {
-        gpio_set_level(scl, 0);
-        esp_rom_delay_us(5);
-        gpio_set_level(scl, 1);
-        esp_rom_delay_us(5);
-    }
-    /* STOP condition */
-    gpio_set_level(sda, 0);
-    esp_rom_delay_us(5);
-    gpio_set_level(sda, 1);
-    esp_rom_delay_us(5);
-
-    bool ok = gpio_get_level(scl) && gpio_get_level(sda);
+    int sda_lvl = gpio_get_level(sda), scl_lvl = gpio_get_level(scl);
     gpio_reset_pin(sda);
     gpio_reset_pin(scl);
+
     if (!ok) {
-        ESP_LOGE(TAG, "I2C SCL is held low by a device on the bus. "
-                      "Press the RST button (a USB/esptool reset does not reset bus devices).");
+        ESP_LOGE(TAG, "I2C bus still held after %d ms (SDA=%d SCL=%d). "
+                      "Press the RST button.", waited, sda_lvl, scl_lvl);
         return ESP_ERR_INVALID_STATE;
     }
-    ESP_LOGI(TAG, "I2C bus recovered");
+    if (waited) {
+        ESP_LOGW(TAG, "I2C bus free after %d ms", waited);
+    }
     return ESP_OK;
 }
 
@@ -182,6 +205,52 @@ esp_err_t gizmo_core_tz_set(int index)
 void gizmo_core_power_off(void)
 {
     power_off();
+}
+
+/* Devices known to live on the CoreS3 internal I2C bus (plus Module HMI). */
+static const struct {
+    uint8_t addr;
+    const char *name;
+} s_known_i2c[] = {
+    { 0x10, "BMM150 magnetometer" },
+    { 0x21, "GC0308 camera" },
+    { 0x23, "LTR-553 light/proximity" },
+    { 0x34, "AXP2101 power" },
+    { 0x36, "AW88298 speaker amp" },
+    { 0x38, "FT6336 touch" },
+    { 0x40, "ES7210 mic codec" },
+    { 0x41, "Module HMI" },
+    { 0x51, "BM8563 RTC" },
+    { 0x58, "AW9523 GPIO expander" },
+    { 0x68, "BMI270 IMU" },
+    { 0x69, "BMI270 IMU" },
+};
+
+const char *gizmo_core_i2c_device_name(uint8_t addr)
+{
+    for (size_t i = 0; i < sizeof(s_known_i2c) / sizeof(s_known_i2c[0]); i++) {
+        if (s_known_i2c[i].addr == addr) {
+            return s_known_i2c[i].name;
+        }
+    }
+    return NULL;
+}
+
+int gizmo_core_i2c_scan(uint8_t *addrs, int max)
+{
+    i2c_master_bus_handle_t bus;
+    if (i2c_master_get_bus_handle(BSP_I2C_NUM, &bus) != ESP_OK) {
+        return -1;
+    }
+    int n = 0;
+    /* 7-bit addresses outside the reserved ranges. */
+    for (uint8_t a = 0x08; a <= 0x77 && n < max; a++) {
+        if (i2c_master_probe(bus, a, 20) == ESP_OK) {
+            addrs[n++] = a;
+        }
+    }
+    ESP_LOGI(TAG, "I2C scan: %d device(s)", n);
+    return n;
 }
 
 lv_indev_t *gizmo_core_get_encoder(void)
