@@ -4,6 +4,22 @@ M5Stack Core S3 Gizmo: an LVGL home screen with a tabbed settings page
 (display brightness, Wi-Fi), a status bar (Wi-Fi, battery, charging), and
 navigation by touch or by the M5Stack Module HMI encoder.
 
+## Screenshots
+
+Captured from the device over the serial console (`make screenshots`); the
+network name, IP address, timezone and nearby networks are blurred on capture.
+
+| | |
+| --- | --- |
+| ![Home](assets/screenshots/home.png) | ![Settings, Display tab](assets/screenshots/settings_display.png) |
+| Home: clock, Wi-Fi, charging and battery in the top bar | Settings → Display: brightness |
+| ![Settings, Network tab](assets/screenshots/settings_network.png) | |
+| Settings → Network: Wi-Fi status, timezone, networks (private text blurred) | |
+| ![Spectrum, bars](assets/screenshots/spectrum_bars.png) | ![Spectrum, waterfall](assets/screenshots/spectrum_waterfall.png) |
+| Spectrum, bars view with peak hold | Spectrum, waterfall view (tap or encoder push to switch) |
+| ![Diagnostics, I2C tab](assets/screenshots/diag_i2c.png) | ![Diagnostics, Power tab](assets/screenshots/diag_power.png) |
+| Diagnostics → I2C: devices on the internal bus | Diagnostics → Power: AXP2101 readings |
+
 ## Hardware
 
 - M5Stack CoreS3 (ESP32-S3, 16 MB flash, 8 MB PSRAM)

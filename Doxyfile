@@ -11,6 +11,7 @@ INPUT                  = README.md main components
 FILE_PATTERNS          = *.c *.h *.md
 RECURSIVE              = YES
 USE_MDFILE_AS_MAINPAGE = README.md
+IMAGE_PATH             = assets/screenshots
 EXCLUDE_PATTERNS       = */build/* */managed_components/*
 
 OPTIMIZE_OUTPUT_FOR_C  = YES

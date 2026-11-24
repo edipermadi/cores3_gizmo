@@ -9,6 +9,7 @@
 #   make screenshot   save the device screen to screenshot.png (OUT=file.png)
 #   make touch X=160 Y=120 [MS=100]   simulate a tap on the device
 #   make swipe X1=40 Y1=120 X2=280 Y2=120 [MS=300]   simulate a drag
+#   make screenshots  re-capture the README screenshots from the device
 #
 # ESP-IDF is activated per command via IDF_ACTIVATE, so no prior
 # `source export.sh` is needed. Override if IDF lives elsewhere:
@@ -30,7 +31,7 @@ DOCS_DIR := docs
 export GIZMO_VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null)
 export GIZMO_HAVE_DOT := $(if $(shell command -v dot 2>/dev/null),YES,NO)
 
-.PHONY: all build flash monitor run menuconfig size clean fullclean docs docs-open docs-clean help screenshot touch swipe
+.PHONY: all build flash monitor run menuconfig size clean fullclean docs docs-open docs-clean help screenshot screenshots touch swipe
 
 all: build
 
@@ -74,6 +75,9 @@ docs-clean:
 screenshot:
 	$(TOOL) screenshot -o $(OUT)
 
+screenshots:
+	source "$(IDF_ACTIVATE)" >/dev/null 2>&1 && tools/doc_screenshots.sh assets/screenshots $(if $(PORT),--port $(PORT))
+
 touch:
 	@test -n "$(X)" -a -n "$(Y)" || { echo "usage: make touch X=<x> Y=<y> [MS=<ms>]"; exit 1; }
 	$(TOOL) touch $(X) $(Y) $(MS)
@@ -83,4 +87,4 @@ swipe:
 	$(TOOL) swipe $(X1) $(Y1) $(X2) $(Y2) $(MS)
 
 help:
-	@sed -n '2,13p' Makefile | sed 's/^# \{0,1\}//'
+	@sed -n '2,14p' Makefile | sed 's/^# \{0,1\}//'

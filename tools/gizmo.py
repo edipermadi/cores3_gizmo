@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Host side of the gizmo serial console.
 
-    gizmo.py screenshot [-o out.png]     grab the screen as PNG
+    gizmo.py screenshot [-o out.png] [--blur X,Y,W,H ...]
+                                         grab the screen as PNG, optionally
+                                         blurring regions (e.g. SSIDs) first
     gizmo.py touch X Y [MS]              simulate a tap (MS = hold time)
     gizmo.py swipe X1 Y1 X2 Y2 [MS]      simulate a drag (MS = duration)
     gizmo.py cmd "any console command"   send a raw command, print the reply
@@ -65,13 +67,46 @@ def read_lines(s, until, timeout):
     raise TimeoutError(f"no '{until}' within {timeout}s")
 
 
-def rgb565le_to_png(raw, w, h):
+def rgb565le_to_rgb(raw, w, h):
+    """RGB565 little-endian -> flat RGB888 bytearray."""
+    rgb = bytearray()
+    for (px,) in struct.iter_unpack("<H", raw[:w * h * 2]):
+        r, g, b = (px >> 11) & 0x1F, (px >> 5) & 0x3F, px & 0x1F
+        rgb += bytes(((r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2)))
+    return rgb
+
+
+def blur_region(rgb, w, h, x0, y0, rw, rh, radius=6, passes=3):
+    """Strong blur of one rectangle in place (repeated box blur ~ Gaussian).
+
+    Only pixels inside the rectangle are read, so nothing outside leaks in and
+    the private content is not recoverable from the blurred result.
+    """
+    x0, y0 = max(0, x0), max(0, y0)
+    x1, y1 = min(w, x0 + rw), min(h, y0 + rh)
+    if x1 <= x0 or y1 <= y0:
+        return
+    for _ in range(passes):
+        for axis in (0, 1):
+            outer = range(y0, y1) if axis == 0 else range(x0, x1)
+            span = (x0, x1) if axis == 0 else (y0, y1)
+            for o in outer:
+                idx = [(o * w + i) * 3 for i in range(*span)] if axis == 0 else \
+                      [(i * w + o) * 3 for i in range(*span)]
+                n = len(idx)
+                src = [rgb[i:i + 3] for i in idx]
+                for k in range(n):
+                    lo, hi = max(0, k - radius), min(n, k + radius + 1)
+                    cnt = hi - lo
+                    for c in range(3):
+                        rgb[idx[k] + c] = sum(src[j][c] for j in range(lo, hi)) // cnt
+
+
+def rgb_to_png(rgb, w, h):
     rows = bytearray()
     for y in range(h):
         rows.append(0)  # filter: none
-        for (px,) in struct.iter_unpack("<H", raw[y * w * 2:(y + 1) * w * 2]):
-            r, g, b = (px >> 11) & 0x1F, (px >> 5) & 0x3F, px & 0x1F
-            rows += bytes(((r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2)))
+        rows += rgb[y * w * 3:(y + 1) * w * 3]
 
     def chunk(tag, data):
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
@@ -82,7 +117,7 @@ def rgb565le_to_png(raw, w, h):
             + chunk(b"IEND", b""))
 
 
-def cmd_screenshot(s, out):
+def cmd_screenshot(s, out, blur=()):
     send(s, "screenshot")
     header, b64, stats = None, [], ""
     for line in read_lines(s, r"^SCREENSHOT END|screenshot: ", timeout=20):
@@ -112,8 +147,13 @@ def cmd_screenshot(s, out):
     if len(raw) != raw_len:
         sys.exit(f"decompressed {len(raw)} bytes, expected {raw_len}")
 
+    rgb = rgb565le_to_rgb(raw, w, h)
+    for region in blur:
+        blur_region(rgb, w, h, *region)
     with open(out, "wb") as f:
-        f.write(rgb565le_to_png(raw, w, h))
+        f.write(rgb_to_png(rgb, w, h))
+    if blur:
+        print(f"blurred {len(blur)} region(s)")
     print(f"{out}: {w}x{h}, {zlen} bytes over serial ({100 * zlen / raw_len:.1f}% of raw)")
     if stats:
         print(f"device: {stats}")
@@ -154,6 +194,9 @@ def main():
 
     p = sub.add_parser("screenshot", help="save the screen as PNG")
     p.add_argument("-o", "--out", default="screenshot.png")
+    p.add_argument("--blur", action="append", default=[], metavar="X,Y,W,H",
+                   type=lambda v: tuple(int(n) for n in v.split(",")),
+                   help="blur this rectangle before saving (repeatable)")
 
     p = sub.add_parser("touch", help="simulate a tap")
     p.add_argument("x", type=int)
@@ -173,7 +216,7 @@ def main():
     s = open_port(args.port or find_port())
     try:
         if args.cmd == "screenshot":
-            cmd_screenshot(s, args.out)
+            cmd_screenshot(s, args.out, args.blur)
         elif args.cmd == "touch":
             cmd_touch(s, args.x, args.y, args.ms)
         elif args.cmd == "swipe":
