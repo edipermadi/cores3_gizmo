@@ -11,7 +11,8 @@
  *  - ui_settings.c settings screen with tabs
  *  - ui_display.c  "Display" tab (brightness)
  *  - ui_network.c  "Network" tab (Wi-Fi scan/connect, password entry, timezone)
- *  - ui_i2c.c      "I2C" screen (internal bus scan)
+ *  - ui_diag.c     "Diagnostics" screen: I2C scan and PMU tabs
+ *  - ui_spectrum.c "Spectrum" screen: live microphone spectrum
  */
 
 #include "gizmo_core.h"
@@ -40,7 +41,7 @@ void ui_add_focusable(lv_group_t *group, lv_obj_t *obj);
 /** Plain dark full-screen object. */
 lv_obj_t *ui_create_screen(void);
 
-/** Top bar with optional centred title and the status icons on the right. */
+/** Top bar with optional title (left, after the back button) and status icons on the right. */
 lv_obj_t *ui_create_header(lv_obj_t *parent, const char *title);
 
 /** Transparent "<" button at the left of a header. */
@@ -56,7 +57,8 @@ void ui_status_start(void);
 
 void ui_show_home(void);
 void ui_show_settings(void);
-void ui_show_i2c(void);
+void ui_show_diag(void);
+void ui_show_spectrum(void);
 
 /** Point the encoder (if present) at group. */
 void ui_use_group(lv_group_t *group);
@@ -80,10 +82,16 @@ void ui_settings_on_show(void);
 
 void ui_display_tab_create(lv_obj_t *page);
 
-lv_obj_t *ui_i2c_create(void);
-lv_group_t *ui_i2c_group(void);
-/** Called each time the I2C screen is shown (rescans the bus). */
-void ui_i2c_on_show(void);
+lv_obj_t *ui_spectrum_create(void);
+lv_group_t *ui_spectrum_group(void);
+/** Start / stop the analyser with the screen. */
+void ui_spectrum_on_show(void);
+void ui_spectrum_on_hide(void);
+
+lv_obj_t *ui_diag_create(void);
+lv_group_t *ui_diag_group(void);
+/** Called each time the Diagnostics screen is shown. */
+void ui_diag_on_show(void);
 void ui_network_tab_create(lv_obj_t *page);
 /** Called when the Network tab becomes visible. */
 void ui_network_tab_shown(void);

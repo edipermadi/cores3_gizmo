@@ -8,3 +8,7 @@ dependencies:
   lvgl/lvgl:
     version: ^9
     public: true
+  # FFT for the microphone spectrum analyser.
+  espressif/esp-dsp: ^1
+  # WS2812 strip on the Bottom3 base (VU meter).
+  espressif/led_strip: ^3

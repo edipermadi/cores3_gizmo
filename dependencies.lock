@@ -9,6 +9,16 @@ dependencies:
       registry_url: https://components.espressif.com
       type: service
     version: 0.5.3
+  espressif/esp-dsp:
+    component_hash: ed9ac175b14e0414399a2b33c525579414b5bad19a2a67b12ea212def96f9a98
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.2'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.8.2
   espressif/esp32-camera:
     component_hash: f14a6a9a5c223e49ea7ce6387a2124fc4f8a2239d5f6a1de1850217244f774fe
     dependencies:
@@ -95,6 +105,16 @@ dependencies:
       registry_url: https://components.espressif.com
       type: service
     version: 2.9.0
+  espressif/led_strip:
+    component_hash: 28621486f77229aaf81c71f5e15d6fbf36c2949cf11094e07090593e659e7639
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 3.0.3
   espressif/m5stack_core_s3:
     component_hash: 2b578980fc81304857504b8a92e1693e8529966f097fd626b251d0b052bf6a48
     dependencies:
@@ -139,9 +159,11 @@ dependencies:
       type: service
     version: 9.3.0
 direct_dependencies:
+- espressif/esp-dsp
+- espressif/led_strip
 - espressif/m5stack_core_s3
 - idf
 - lvgl/lvgl
-manifest_hash: 8c2b9a440b9be32dcc1f64f4e6c97a6bf642617922ff6f97c087dd27e40319d4
+manifest_hash: eca7ac99b4ed1ed27c5301128022c9cc2a6ddd3f8bf87fd5ca41d8f2e9d6f658
 target: esp32s3
 version: 3.0.0

@@ -15,7 +15,7 @@ navigation by touch or by the M5Stack Module HMI encoder.
 | Path | Role |
 | --- | --- |
 | `components/gizmo_core` | Board layer: display, backlight, NVS settings, battery/charging (AXP2101), Wi-Fi station, Module HMI encoder |
-| `components/gizmo_ui` | LVGL screens; uses only `gizmo_core.h`. One file per screen/tab: `ui_home.c`, `ui_settings.c`, `ui_display.c`, `ui_network.c`, shared bits in `ui_common.c` |
+| `components/gizmo_ui` | LVGL screens; uses only `gizmo_core.h`. One file per screen/tab: `ui_home.c`, `ui_settings.c`, `ui_display.c`, `ui_network.c`, `ui_diag.c`, `ui_spectrum.c`, shared bits in `ui_common.c` |
 | `components/gizmo_console` | Serial command console (screenshot, simulated touch) |
 | `main` | `app_main`: init core, build UI, start console |
 
@@ -40,6 +40,18 @@ RTC is updated. `--:--` means neither source has a valid time yet.
 Pick your timezone in Settings → Network (e.g. `Asia/Singapore`); it is saved
 and applied immediately. The pre-selection before any choice is
 `Gizmo core → Default timezone` in `make menuconfig` (default `Etc/UTC`).
+
+The Spectrum page shows the on-board microphones live (ES7210, 16 kHz,
+1024-point FFT via esp-dsp, ~31 frames/s, 60 Hz-8 kHz log scale). Tap the
+plot to switch between **bars** (32 bands with peak hold) and a **waterfall**
+spectrogram (~4.5 s of history). While the page is open the Bottom3 base's
+LEDs are a stereo VU meter (left bar = left mic, right bar = right mic,
+green/yellow/red, filling bottom-up). The mics and LEDs only run while the
+page is open.
+
+The Diagnostics page has an **I2C** tab (devices on the internal bus) and a
+**Power** tab (AXP2101: power source, battery %, charge phase, battery/USB/
+system voltages, PMU temperature, raw status registers).
 
 If one encoder click moves more than one step, set
 `Gizmo core → Module HMI encoder counts per detent` in `make menuconfig`.
@@ -75,4 +87,6 @@ python tools/gizmo.py cmd help   # any console command
 | `screenshot` | Active screen as RGB565, zlib-compressed (ROM deflate), base64 between `SCREENSHOT BEGIN/END` lines (~3 KB per frame) |
 | `touch X Y [MS]` | Tap at X,Y held for MS ms (default 100), via a virtual LVGL pointer |
 | `swipe X1 Y1 X2 Y2 [MS]` | Press at X1,Y1, move linearly to X2,Y2 over MS ms (default 300), release |
+| `i2cscan` | List devices answering on the internal I2C bus |
+| `led IDX\|all\|off [R G B]` | Light base RGB LEDs (a single index lights only that LED) |
 

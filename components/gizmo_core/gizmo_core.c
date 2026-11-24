@@ -8,8 +8,10 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "hmi.h"
+#include "leds.h"
 #include "power.h"
 #include "settings.h"
+#include "spectrum.h"
 #include "timesync.h"
 #include "timezones.h"
 #include "wifi.h"
@@ -49,6 +51,12 @@ esp_err_t gizmo_core_init(void)
 
     timesync_init();
 
+    /* Base LEDs (Bottom3) are optional too. */
+    err = leds_init();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Base LEDs unavailable: %s", esp_err_to_name(err));
+    }
+
     /* Network is optional for the UI: log and carry on. */
     err = wifi_init();
     if (err != ESP_OK) {
@@ -61,6 +69,11 @@ esp_err_t gizmo_core_init(void)
         ESP_LOGW(TAG, "Module HMI init failed: %s", esp_err_to_name(err));
     }
     return ESP_OK;
+}
+
+esp_err_t gizmo_core_get_pmu_info(gizmo_pmu_info_t *out)
+{
+    return power_get_info(out);
 }
 
 esp_err_t gizmo_core_get_battery(gizmo_battery_t *out)
@@ -224,6 +237,38 @@ int gizmo_core_i2c_scan(uint8_t *addrs, int max)
     }
     ESP_LOGI(TAG, "I2C scan: %d device(s)", n);
     return n;
+}
+
+esp_err_t gizmo_core_spectrum_start(void)
+{
+    return spectrum_start();
+}
+
+void gizmo_core_spectrum_stop(void)
+{
+    spectrum_stop();
+}
+
+esp_err_t gizmo_core_spectrum_get(gizmo_spectrum_t *out)
+{
+    return spectrum_get(out);
+}
+
+int gizmo_core_leds_count(void)
+{
+    return leds_count();
+}
+
+esp_err_t gizmo_core_leds_set(int index, uint8_t r, uint8_t g, uint8_t b)
+{
+    leds_set(index, r, g, b);
+    return leds_show();
+}
+
+esp_err_t gizmo_core_leds_off(void)
+{
+    leds_clear();
+    return leds_show();
 }
 
 lv_indev_t *gizmo_core_get_encoder(void)

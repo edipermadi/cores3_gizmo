@@ -7,7 +7,8 @@ static const char *TAG = "ui";
 
 static lv_obj_t *s_home_scr;
 static lv_obj_t *s_settings_scr;
-static lv_obj_t *s_i2c_scr;
+static lv_obj_t *s_diag_scr;
+static lv_obj_t *s_spectrum_scr;
 static lv_group_t *s_home_group;
 
 /* ---------- encoder groups ---------- */
@@ -80,6 +81,9 @@ void ui_group_rebuild(lv_group_t *group, lv_obj_t *const *roots, int n_roots)
 
 void ui_show_home(void)
 {
+    /* Leaving the spectrum page: stop the microphones. No-op otherwise. */
+    ui_spectrum_on_hide();
+
     /* Persist on leave as well: the encoder back button skips the slider's
      * release event, which is where touch input saves. */
     esp_err_t err = gizmo_core_set_brightness(gizmo_core_get_brightness(), true);
@@ -97,11 +101,18 @@ void ui_show_settings(void)
     lv_screen_load_anim(s_settings_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
 }
 
-void ui_show_i2c(void)
+void ui_show_spectrum(void)
 {
-    ui_i2c_on_show();
-    ui_use_group(ui_i2c_group());
-    lv_screen_load_anim(s_i2c_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
+    ui_spectrum_on_show();
+    ui_use_group(ui_spectrum_group());
+    lv_screen_load_anim(s_spectrum_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
+}
+
+void ui_show_diag(void)
+{
+    ui_diag_on_show();
+    ui_use_group(ui_diag_group());
+    lv_screen_load_anim(s_diag_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
 }
 
 /* ---------- public ---------- */
@@ -113,7 +124,8 @@ void gizmo_ui_init(void)
     s_home_group = lv_group_create();
     s_home_scr = ui_home_create(s_home_group);
     s_settings_scr = ui_settings_create();
-    s_i2c_scr = ui_i2c_create();
+    s_diag_scr = ui_diag_create();
+    s_spectrum_scr = ui_spectrum_create();
 
     ui_status_start();
     ui_use_group(s_home_group);

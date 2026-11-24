@@ -11,6 +11,7 @@
  *  - `touch X Y [MS]`      simulated tap at X,Y held for MS milliseconds (default 100)
  *  - `swipe X1 Y1 X2 Y2 [MS]` simulated drag from X1,Y1 to X2,Y2 over MS ms (default 300)
  *  - `i2cscan`             list devices answering on the internal I2C bus
+ *  - `led IDX|all|off [R G B]` drive the base RGB LEDs (find the layout)
  *  - `help`                list commands
  */
 

@@ -6,10 +6,16 @@ static void open_settings_cb(lv_event_t *e)
     ui_show_settings();
 }
 
-static void open_i2c_cb(lv_event_t *e)
+static void open_spectrum_cb(lv_event_t *e)
 {
     (void)e;
-    ui_show_i2c();
+    ui_show_spectrum();
+}
+
+static void open_diag_cb(lv_event_t *e)
+{
+    (void)e;
+    ui_show_diag();
 }
 
 /** Launcher icon: rounded button with a symbol, caption underneath. */
@@ -67,6 +73,7 @@ lv_obj_t *ui_home_create(lv_group_t *group)
     lv_obj_set_flex_align(grid, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
 
     create_app_icon(grid, group, LV_SYMBOL_SETTINGS, "Settings", open_settings_cb);
-    create_app_icon(grid, group, LV_SYMBOL_LIST, "I2C", open_i2c_cb);
+    create_app_icon(grid, group, LV_SYMBOL_AUDIO, "Spectrum", open_spectrum_cb);
+    create_app_icon(grid, group, LV_SYMBOL_EYE_OPEN, "Diagnostics", open_diag_cb);
     return scr;
 }

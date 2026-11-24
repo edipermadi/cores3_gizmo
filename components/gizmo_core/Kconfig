@@ -28,4 +28,27 @@ menu "Gizmo core"
             Must be one of the zones in components/gizmo_core/timezones.c;
             unknown names fall back to Etc/UTC.
 
+    config GIZMO_LED_GPIO
+        int "Bottom3 RGB LED data GPIO"
+        default 5
+        help
+            WS2812 data line of the M5GO Bottom3 base. Its pin map labels
+            M-Bus pin 8 "RGB", which is GPIO5 on CoreS3.
+
+    config GIZMO_LED_COUNT
+        int "Number of RGB LEDs"
+        range 1 64
+        default 10
+
+    config GIZMO_LED_BRIGHTNESS
+        int "VU meter LED brightness (0-255)"
+        range 1 255
+        default 48
+
+    config GIZMO_VU_SWAP_MICS
+        bool "VU meter: swap microphone channels"
+        default n
+        help
+            Treat I2S channel 1 as the left microphone instead of channel 0.
+
 endmenu

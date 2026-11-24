@@ -14,6 +14,13 @@
  *   0x01 PMU status 2   bits[6:5] battery current: 00 standby, 01 charge, 10 discharge
  *   0x18 charger/gauge  bit3 fuel gauge enable, bit1 cell battery charge enable
  *   0xA4 battery %      fuel gauge state of charge, 0..100
+ *   0x01 bits[2:0]      charge phase: 0 trickle, 1 pre, 2 CC, 3 CV, 4 done, 5 idle
+ *   0x30 ADC enable     bit0 VBAT, bit2 VBUS, bit3 VSYS, bit4 die temperature
+ *   0x34/35 VBAT, 0x38/39 VBUS, 0x3A/3B VSYS: 14-bit mV (high reg bits 5:0)
+ *   0x3C/3D die temp    14-bit raw; degC = 22 + (7274 - raw) / 20
+ *   0x62 bits[4:0]      constant-current charge limit: n*25 mA up to 8 (200 mA),
+ *                       then 200 + (n-8)*100 mA (max 16 = 1000 mA). The AXP2101
+ *                       has no current ADC, so this setting is all we can show.
  *   0x10 common config  bit0 software power-off
  *   0x41 IRQ enable 2   bit3 power key short press
  *   0x48-0x4A IRQ status (write 1 to clear); 0x49 bit3 power key short press
@@ -46,6 +53,13 @@ static const char *TAG = "power";
 #define REG_STATUS2         0x01
 #define REG_CHG_GAUGE_CTRL  0x18
 #define REG_BATT_PERCENT    0xA4
+#define REG_ADC_EN          0x30
+#define REG_CHG_CURRENT     0x62
+#define REG_ADC_VBAT_H      0x34
+#define REG_ADC_VBUS_H      0x38
+#define REG_ADC_VSYS_H      0x3A
+#define REG_ADC_TDIE_H      0x3C
+#define ADC_EN_MASK         ((1 << 0) | (1 << 2) | (1 << 3) | (1 << 4))
 #define REG_COMMON_CFG      0x10
 #define REG_IRQ_EN2         0x41
 #define REG_IRQ_STS1        0x48
@@ -60,7 +74,7 @@ static const char *TAG = "power";
 #define IRQ2_PKEY_SHORT     (1 << 3)
 
 static i2c_master_dev_handle_t s_axp;
-static gizmo_battery_t s_state = { .percent = -1 };
+static gizmo_pmu_info_t s_state = { .battery = { .percent = -1 } };
 static bool s_valid;
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 
@@ -87,33 +101,86 @@ static esp_err_t axp_update_bits(uint8_t reg, uint8_t mask, bool set, bool *chan
     return nv == v ? ESP_OK : axp_write(reg, nv);
 }
 
+/** 14-bit ADC value split over two registers (high byte bits 5:0). */
+static esp_err_t axp_read_adc(uint8_t reg_h, int *out)
+{
+    uint8_t h, l;
+    ESP_RETURN_ON_ERROR(axp_read(reg_h, &h), TAG, "adc read");
+    ESP_RETURN_ON_ERROR(axp_read(reg_h + 1, &l), TAG, "adc read");
+    *out = ((h & 0x3F) << 8) | l;
+    return ESP_OK;
+}
+
+static int charge_limit_ma(uint8_t reg)
+{
+    uint8_t n = reg & 0x1F;
+    if (n <= 8) {
+        return n * 25;
+    }
+    return n <= 16 ? 200 + (n - 8) * 100 : -1;
+}
+
+static const char *charge_phase_name(uint8_t st2)
+{
+    static const char *const names[] = {
+        "Trickle charge", "Pre-charge", "Constant current", "Constant voltage",
+        "Charge done", "Not charging",
+    };
+    uint8_t phase = st2 & 0x07;
+    return phase < sizeof(names) / sizeof(names[0]) ? names[phase] : "Unknown";
+}
+
 /** Read PMIC state and apply the charge policy: charge only on external power. */
-static esp_err_t poll_once(gizmo_battery_t *out)
+static esp_err_t poll_once(gizmo_pmu_info_t *out)
 {
     uint8_t st1, st2, pct;
     ESP_RETURN_ON_ERROR(axp_read(REG_STATUS1, &st1), TAG, "status1 read failed");
 
-    gizmo_battery_t b = { .percent = -1 };
-    b.external_power = (st1 & STATUS1_VBUS_GOOD) != 0;
-    b.present = (st1 & STATUS1_BATT_EXIST) != 0;
+    gizmo_pmu_info_t info = { .battery = { .percent = -1 },
+                              .vbat_mv = -1, .vbus_mv = -1, .vsys_mv = -1,
+                              .charge_limit_ma = -1 };
+    gizmo_battery_t *b = &info.battery;
+    b->external_power = (st1 & STATUS1_VBUS_GOOD) != 0;
+    b->present = (st1 & STATUS1_BATT_EXIST) != 0;
 
     bool changed = false;
     ESP_RETURN_ON_ERROR(axp_update_bits(REG_CHG_GAUGE_CTRL, CTRL_CHARGE_EN,
-                                        b.external_power && b.present, &changed),
+                                        b->external_power && b->present, &changed),
                         TAG, "charge control failed");
     if (changed) {
-        ESP_LOGI(TAG, "Battery charging %s", b.external_power && b.present ? "enabled" : "disabled");
+        ESP_LOGI(TAG, "Battery charging %s", b->external_power && b->present ? "enabled" : "disabled");
     }
 
     /* Read status 2 after the policy write so `charging` reflects it. */
     ESP_RETURN_ON_ERROR(axp_read(REG_STATUS2, &st2), TAG, "status2 read failed");
-    b.charging = b.present && ((st2 >> 5) & 0x03) == 0x01;
+    b->charging = b->present && ((st2 >> 5) & 0x03) == 0x01;
 
-    if (b.present && axp_read(REG_BATT_PERCENT, &pct) == ESP_OK) {
-        b.percent = pct > 100 ? 100 : pct;
+    if (b->present && axp_read(REG_BATT_PERCENT, &pct) == ESP_OK) {
+        b->percent = pct > 100 ? 100 : pct;
     }
 
-    *out = b;
+    /* Measurements; a failed read just leaves the field at -1. */
+    int raw;
+    if (b->present && axp_read_adc(REG_ADC_VBAT_H, &raw) == ESP_OK) {
+        info.vbat_mv = raw;
+    }
+    if (b->external_power && axp_read_adc(REG_ADC_VBUS_H, &raw) == ESP_OK) {
+        info.vbus_mv = raw;
+    }
+    if (axp_read_adc(REG_ADC_VSYS_H, &raw) == ESP_OK) {
+        info.vsys_mv = raw;
+    }
+    if (axp_read_adc(REG_ADC_TDIE_H, &raw) == ESP_OK) {
+        info.die_temp_c = 22.0f + (7274 - raw) / 20.0f;
+        info.die_temp_valid = true;
+    }
+    uint8_t icc;
+    info.charge_limit_ma = axp_read(REG_CHG_CURRENT, &icc) == ESP_OK ? charge_limit_ma(icc) : -1;
+    info.charge_phase = b->present ? charge_phase_name(st2) : "No battery";
+    info.status1 = st1;
+    info.status2 = st2;
+
+    *out = info;
     return ESP_OK;
 }
 
@@ -186,12 +253,12 @@ static void power_task(void *arg)
 
         if (--ticks_to_poll <= 0) {
             ticks_to_poll = POLL_MS / KEY_POLL_MS;
-            gizmo_battery_t b;
-            bool ok = poll_once(&b) == ESP_OK;
+            gizmo_pmu_info_t info;
+            bool ok = poll_once(&info) == ESP_OK;
 
             taskENTER_CRITICAL(&s_lock);
             if (ok) {
-                s_state = b;
+                s_state = info;
             }
             s_valid = ok;
             taskEXIT_CRITICAL(&s_lock);
@@ -222,10 +289,13 @@ esp_err_t power_init(void)
                         TAG, "enable power key IRQ failed");
     clear_irqs();
 
+    /* Voltage and temperature measurements for the diagnostics page. */
+    ESP_RETURN_ON_ERROR(axp_update_bits(REG_ADC_EN, ADC_EN_MASK, true, NULL), TAG, "adc enable");
+
     /* First poll synchronously so the UI has real data on its first frame. */
-    gizmo_battery_t b;
-    if (poll_once(&b) == ESP_OK) {
-        s_state = b;
+    gizmo_pmu_info_t info;
+    if (poll_once(&info) == ESP_OK) {
+        s_state = info;
         s_valid = true;
     }
 
@@ -234,7 +304,7 @@ esp_err_t power_init(void)
     return ESP_OK;
 }
 
-esp_err_t power_get_battery(gizmo_battery_t *out)
+esp_err_t power_get_info(gizmo_pmu_info_t *out)
 {
     ESP_RETURN_ON_FALSE(out, ESP_ERR_INVALID_ARG, TAG, "null out");
 
@@ -244,4 +314,13 @@ esp_err_t power_get_battery(gizmo_battery_t *out)
     taskEXIT_CRITICAL(&s_lock);
 
     return valid ? ESP_OK : ESP_ERR_INVALID_STATE;
+}
+
+esp_err_t power_get_battery(gizmo_battery_t *out)
+{
+    ESP_RETURN_ON_FALSE(out, ESP_ERR_INVALID_ARG, TAG, "null out");
+    gizmo_pmu_info_t info;
+    esp_err_t err = power_get_info(&info);
+    *out = info.battery;
+    return err;
 }

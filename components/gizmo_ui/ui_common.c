@@ -266,10 +266,12 @@ lv_obj_t *ui_create_header(lv_obj_t *parent, const char *title)
     lv_obj_remove_flag(hdr, LV_OBJ_FLAG_SCROLLABLE);
 
     if (title) {
+        /* Left-aligned after the back button: a centred title runs into the
+         * status icons once it is longer than ~9 characters. */
         lv_obj_t *lbl = lv_label_create(hdr);
         lv_label_set_text(lbl, title);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
-        lv_obj_center(lbl);
+        lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 66, 0);
     }
 
     create_status(hdr);

@@ -15,6 +15,9 @@
 /** Attach to the AXP2101, enable its fuel gauge and start the poll task. */
 esp_err_t power_init(void);
 
+/** Latest cached PMU readings. ESP_ERR_INVALID_STATE if the last poll failed. */
+esp_err_t power_get_info(gizmo_pmu_info_t *out);
+
 /** Latest cached battery state. ESP_ERR_INVALID_STATE if the last poll failed. */
 esp_err_t power_get_battery(gizmo_battery_t *out);
 

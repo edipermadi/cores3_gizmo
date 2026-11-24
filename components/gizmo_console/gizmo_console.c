@@ -21,6 +21,7 @@ esp_err_t gizmo_console_start(void)
     ESP_RETURN_ON_ERROR(cmd_screenshot_register(), TAG, "screenshot");
     ESP_RETURN_ON_ERROR(cmd_touch_register(), TAG, "touch");
     ESP_RETURN_ON_ERROR(cmd_i2c_register(), TAG, "i2cscan");
+    ESP_RETURN_ON_ERROR(cmd_led_register(), TAG, "led");
 
     return esp_console_start_repl(repl);
 }
