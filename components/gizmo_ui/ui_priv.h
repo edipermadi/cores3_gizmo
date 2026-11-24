@@ -10,8 +10,7 @@
  *  - ui_home.c     home launcher
  *  - ui_settings.c settings screen with tabs
  *  - ui_display.c  "Display" tab (brightness)
- *  - ui_network.c  "Network" tab (Wi-Fi scan/connect, password entry)
- *  - ui_time.c     "Time" tab (timezone, current time and source)
+ *  - ui_network.c  "Network" tab (Wi-Fi scan/connect, password entry, timezone)
  */
 
 #include "gizmo_core.h"
@@ -81,5 +80,3 @@ void ui_display_tab_create(lv_obj_t *page);
 void ui_network_tab_create(lv_obj_t *page);
 /** Called when the Network tab becomes visible. */
 void ui_network_tab_shown(void);
-
-void ui_time_tab_create(lv_obj_t *page);

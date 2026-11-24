@@ -36,7 +36,7 @@ the ✕ button forgets it.
 The home top bar shows a 24h clock. At boot the time comes from the
 battery-backed BM8563 RTC; once Wi-Fi connects it is synced over NTP and the
 RTC is updated. `--:--` means neither source has a valid time yet.
-Pick your timezone in Settings → Time (e.g. `Asia/Singapore`); it is saved
+Pick your timezone in Settings → Network (e.g. `Asia/Singapore`); it is saved
 and applied immediately. The pre-selection before any choice is
 `Gizmo core → Default timezone` in `make menuconfig` (default `Etc/UTC`).
 

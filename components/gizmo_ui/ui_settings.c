@@ -9,7 +9,7 @@
 
 #define TAB_BAR_H 34
 
-enum { TAB_DISPLAY, TAB_NETWORK, TAB_TIME };
+enum { TAB_DISPLAY, TAB_NETWORK };
 
 static lv_obj_t *s_header;
 static lv_obj_t *s_tabview;
@@ -72,13 +72,10 @@ lv_obj_t *ui_settings_create(void)
      * and keeps the encoder group in sync with what's visible. */
     lv_obj_remove_flag(lv_tabview_get_content(s_tabview), LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Text-only labels: three tabs share 320 px. */
-    lv_obj_t *display = lv_tabview_add_tab(s_tabview, "Display");
-    lv_obj_t *network = lv_tabview_add_tab(s_tabview, "Network");
-    lv_obj_t *time = lv_tabview_add_tab(s_tabview, "Time");
+    lv_obj_t *display = lv_tabview_add_tab(s_tabview, LV_SYMBOL_EYE_OPEN " Display");
+    lv_obj_t *network = lv_tabview_add_tab(s_tabview, LV_SYMBOL_WIFI " Network");
     ui_display_tab_create(display);
     ui_network_tab_create(network);
-    ui_time_tab_create(time);
 
     lv_obj_add_event_cb(s_tabview, tab_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
 

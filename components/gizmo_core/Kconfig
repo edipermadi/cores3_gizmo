@@ -23,7 +23,7 @@ menu "Gizmo core"
         string "Default timezone (IANA name)"
         default "Etc/UTC"
         help
-            Used until a timezone is picked in Settings -> Time, e.g.
+            Used until a timezone is picked in Settings -> Network, e.g.
             "Asia/Singapore", "Europe/Berlin", "America/New_York".
             Must be one of the zones in components/gizmo_core/timezones.c;
             unknown names fall back to Etc/UTC.

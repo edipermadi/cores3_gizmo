@@ -1,9 +1,13 @@
 /*
- * "Network" tab: Wi-Fi status, scan results, connect / forget.
+ * "Network" tab: Wi-Fi status, timezone, scan results, connect / forget.
  *
- * Layout (tab page):
+ * Layout (tab page, scrolls as a whole):
  *   [status text ..................] [refresh] [forget]
- *   [network list (scrollable)                       ]
+ *   [tz icon] [timezone dropdown                     ]
+ *   [network list, grows with its content            ]
+ *
+ * The timezone lives here because NTP time arrives over the network; the
+ * clock itself is shown in the home top bar.
  *
  * Secured networks open a full-screen password dialog on the top layer with an
  * on-screen keyboard. The keyboard gets its own encoder group (edit mode), so
@@ -12,6 +16,8 @@
  * All state comes from gizmo_core's cached Wi-Fi status, polled by an LVGL
  * timer, so nothing here blocks on the network.
  */
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "esp_log.h"
@@ -302,6 +308,79 @@ static void forget_cb(lv_event_t *e)
     gizmo_core_wifi_forget();
 }
 
+/* ---------- timezone ---------- */
+
+/** "UTC+05:30" style prefix from an offset in minutes. */
+static void format_offset(char *buf, size_t len, int min)
+{
+    char sign = min < 0 ? '-' : '+';
+    min = abs(min);
+    snprintf(buf, len, "UTC%c%02d:%02d", sign, min / 60, min % 60);
+}
+
+/** Newline-separated dropdown options from the core's zone table. */
+static char *build_tz_options(void)
+{
+    int n = gizmo_core_tz_count();
+    size_t cap = 1;
+    for (int i = 0; i < n; i++) {
+        cap += strlen(gizmo_core_tz_name(i)) + 12;   /* "UTC+hh:mm " + '\n' */
+    }
+    char *opts = malloc(cap);
+    if (!opts) {
+        return NULL;
+    }
+    char *p = opts;
+    for (int i = 0; i < n; i++) {
+        char off[12];
+        format_offset(off, sizeof(off), gizmo_core_tz_offset_min(i));
+        p += sprintf(p, "%s%s %s", i ? "\n" : "", off, gizmo_core_tz_name(i));
+    }
+    return opts;
+}
+
+static void tz_changed_cb(lv_event_t *e)
+{
+    lv_obj_t *dd = lv_event_get_target(e);
+    esp_err_t err = gizmo_core_tz_set((int)lv_dropdown_get_selected(dd));
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save timezone: %s", esp_err_to_name(err));
+    }
+}
+
+/** Row: [location icon] [dropdown]. Encoder: push to open, rotate, push to apply. */
+static void create_tz_row(lv_obj_t *page)
+{
+    lv_obj_t *row = lv_obj_create(page);
+    lv_obj_set_size(row, LV_PCT(100), ROW_H);
+    lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(row, 0, 0);
+    lv_obj_set_style_pad_all(row, 0, 0);
+    lv_obj_set_style_pad_column(row, 8, 0);
+    lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t *icon = lv_label_create(row);
+    lv_label_set_text(icon, LV_SYMBOL_GPS);
+    lv_obj_set_style_text_color(icon, UI_COLOR_SUBTEXT, 0);
+
+    lv_obj_t *dd = lv_dropdown_create(row);
+    lv_obj_set_flex_grow(dd, 1);
+    lv_obj_set_style_bg_color(dd, UI_COLOR_CARD, 0);
+    lv_obj_set_style_border_width(dd, 0, 0);
+    char *opts = build_tz_options();
+    if (opts) {
+        lv_dropdown_set_options(dd, opts);   /* LVGL copies the string */
+        free(opts);
+    }
+    int cur = gizmo_core_tz_get();
+    if (cur >= 0) {
+        lv_dropdown_set_selected(dd, (uint32_t)cur);
+    }
+    lv_obj_add_event_cb(dd, tz_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+}
+
 /* ---------- public ---------- */
 
 void ui_network_tab_shown(void)
@@ -317,7 +396,9 @@ void ui_network_tab_create(lv_obj_t *page)
     lv_obj_set_style_pad_all(page, 8, 0);
     lv_obj_set_style_pad_row(page, 6, 0);
     lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
-    lv_obj_remove_flag(page, LV_OBJ_FLAG_SCROLLABLE);
+    /* The page scrolls as a whole; encoder focus scrolls items into view. */
+    lv_obj_set_scroll_dir(page, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(page, LV_SCROLLBAR_MODE_AUTO);
 
     /* Status row */
     lv_obj_t *row = lv_obj_create(page);
@@ -340,10 +421,12 @@ void ui_network_tab_create(lv_obj_t *page)
     s_forget_btn = small_button(row, LV_SYMBOL_CLOSE, forget_cb);
     lv_obj_add_flag(s_forget_btn, LV_OBJ_FLAG_HIDDEN);
 
-    /* Network list */
+    create_tz_row(page);
+
+    /* Network list: sized to content, the page provides the scrolling. */
     s_list = lv_list_create(page);
-    lv_obj_set_width(s_list, LV_PCT(100));
-    lv_obj_set_flex_grow(s_list, 1);
+    lv_obj_set_size(s_list, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_remove_flag(s_list, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(s_list, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(s_list, 0, 0);
     lv_obj_set_style_pad_all(s_list, 0, 0);
