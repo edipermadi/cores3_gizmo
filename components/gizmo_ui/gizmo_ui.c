@@ -30,6 +30,135 @@ static lv_group_t *s_settings_group;
 
 static lv_style_t s_focus_style;
 
+/* ---------- battery status ---------- */
+
+#define COLOR_OK        lv_color_hex(0x4cd964)
+#define COLOR_LOW       lv_color_hex(0xff5f57)
+#define BATTERY_LOW_PCT 15
+#define BATTERY_TICK_MS 500 /* status refresh + charging animation frame */
+#define MAX_STATUS      2   /* one per header (home, settings) */
+
+/** Battery widgets in one header: [charge bolt] [battery icon] [NN%] */
+typedef struct {
+    lv_obj_t *charge;
+    lv_obj_t *icon;
+    lv_obj_t *pct;
+} status_widgets_t;
+
+static status_widgets_t s_status[MAX_STATUS];
+static int s_status_count;
+static int s_anim_frame;
+
+static const char *const s_battery_symbols[] = {
+    LV_SYMBOL_BATTERY_EMPTY, LV_SYMBOL_BATTERY_1, LV_SYMBOL_BATTERY_2,
+    LV_SYMBOL_BATTERY_3, LV_SYMBOL_BATTERY_FULL,
+};
+#define BATTERY_LEVELS ((int)(sizeof(s_battery_symbols) / sizeof(s_battery_symbols[0])))
+
+/** Icon level 0..BATTERY_LEVELS-1 for a charge percentage. */
+static int battery_level(int percent)
+{
+    if (percent >= 90) return 4;
+    if (percent >= 65) return 3;
+    if (percent >= 40) return 2;
+    if (percent >= BATTERY_LOW_PCT) return 1;
+    return 0;
+}
+
+/**
+ * Icon to show this frame. While charging, fill up from the current level to
+ * full and repeat, so the animation also hints at how charged it is.
+ */
+static const char *battery_icon(const gizmo_battery_t *b)
+{
+    int level = battery_level(b->percent < 0 ? 0 : b->percent);
+    if (b->charging) {
+        int span = BATTERY_LEVELS - level;   /* frames from current level to full */
+        if (span < 2) {
+            span = 2;                         /* at full: blink between 3/4 and full */
+            level = BATTERY_LEVELS - 2;
+        }
+        level += s_anim_frame % span;
+    }
+    return s_battery_symbols[level];
+}
+
+static void status_apply(const status_widgets_t *w, const gizmo_battery_t *b, bool ok)
+{
+    if (!ok || !b->present) {
+        /* No battery (or PMIC unreadable): show only that we're on USB power. */
+        lv_obj_add_flag(w->charge, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(w->icon, ok && b->external_power ? LV_SYMBOL_USB : LV_SYMBOL_BATTERY_EMPTY);
+        lv_obj_set_style_text_color(w->icon, COLOR_SUBTEXT, 0);
+        lv_label_set_text(w->pct, ok ? "" : "--");
+        return;
+    }
+
+    if (b->charging) {
+        lv_obj_remove_flag(w->charge, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(w->charge, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    bool low = b->percent >= 0 && b->percent < BATTERY_LOW_PCT && !b->charging;
+    lv_label_set_text(w->icon, battery_icon(b));
+    lv_obj_set_style_text_color(w->icon, b->charging ? COLOR_OK : (low ? COLOR_LOW : COLOR_TEXT), 0);
+
+    if (b->percent >= 0) {
+        lv_label_set_text_fmt(w->pct, "%d%%", b->percent);
+    } else {
+        lv_label_set_text(w->pct, "--");
+    }
+}
+
+static void status_refresh(void)
+{
+    gizmo_battery_t b;
+    bool ok = gizmo_core_get_battery(&b) == ESP_OK;
+    for (int i = 0; i < s_status_count; i++) {
+        status_apply(&s_status[i], &b, ok);
+    }
+}
+
+static void status_timer_cb(lv_timer_t *t)
+{
+    (void)t;
+    s_anim_frame++;
+    status_refresh();   /* reads cached state; no I2C here */
+}
+
+/** Right-aligned battery indicator inside a header. */
+static void create_status(lv_obj_t *hdr)
+{
+    if (s_status_count >= MAX_STATUS) {
+        return;
+    }
+    status_widgets_t *w = &s_status[s_status_count++];
+
+    lv_obj_t *box = lv_obj_create(hdr);
+    lv_obj_set_size(box, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_align(box, LV_ALIGN_RIGHT_MID, -10, 0);
+    lv_obj_set_style_bg_opa(box, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(box, 0, 0);
+    lv_obj_set_style_pad_all(box, 0, 0);
+    lv_obj_set_style_pad_column(box, 4, 0);
+    lv_obj_remove_flag(box, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(box, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    w->charge = lv_label_create(box);
+    lv_label_set_text(w->charge, LV_SYMBOL_CHARGE);
+    lv_obj_set_style_text_color(w->charge, COLOR_OK, 0);
+    lv_obj_add_flag(w->charge, LV_OBJ_FLAG_HIDDEN);
+
+    w->icon = lv_label_create(box);
+    lv_obj_set_style_text_font(w->icon, &lv_font_montserrat_20, 0);
+    lv_label_set_text(w->icon, LV_SYMBOL_BATTERY_EMPTY);
+
+    w->pct = lv_label_create(box);
+    lv_label_set_text(w->pct, "--");
+}
+
 /* ---------- helpers ---------- */
 
 static lv_obj_t *create_screen(void)
@@ -42,6 +171,7 @@ static lv_obj_t *create_screen(void)
     return scr;
 }
 
+/** Top bar with an optional centred title and the battery indicator on the right. */
 static lv_obj_t *create_header(lv_obj_t *parent, const char *title)
 {
     lv_obj_t *hdr = lv_obj_create(parent);
@@ -53,10 +183,14 @@ static lv_obj_t *create_header(lv_obj_t *parent, const char *title)
     lv_obj_set_style_pad_all(hdr, 0, 0);
     lv_obj_remove_flag(hdr, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *lbl = lv_label_create(hdr);
-    lv_label_set_text(lbl, title);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
-    lv_obj_center(lbl);
+    if (title) {
+        lv_obj_t *lbl = lv_label_create(hdr);
+        lv_label_set_text(lbl, title);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
+        lv_obj_center(lbl);
+    }
+
+    create_status(hdr);
     return hdr;
 }
 
@@ -164,7 +298,7 @@ static void build_home(void)
 {
     s_home_scr = create_screen();
     s_home_group = lv_group_create();
-    create_header(s_home_scr, "CoreS3 Gizmo");
+    create_header(s_home_scr, NULL);
 
     /* Grid area under the header; flex-wrap so more apps can be added later. */
     lv_obj_t *grid = lv_obj_create(s_home_scr);
@@ -282,6 +416,9 @@ void gizmo_ui_init(void)
 
     build_home();
     build_settings();
+
+    status_refresh();
+    lv_timer_create(status_timer_cb, BATTERY_TICK_MS, NULL);
 
     lv_indev_t *enc = gizmo_core_get_encoder();
     if (enc) {

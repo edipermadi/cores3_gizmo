@@ -22,6 +22,14 @@ extern "C" {
 #define GIZMO_BRIGHTNESS_MIN 10
 #define GIZMO_BRIGHTNESS_MAX 100
 
+/** Battery state from the power management chip. */
+typedef struct {
+    bool present;        /**< A battery is connected. */
+    bool charging;       /**< Battery is currently charging (enabled only on USB power). */
+    bool external_power; /**< USB / bus 5 V is present. */
+    int percent;         /**< State of charge 0..100, or -1 if unknown. */
+} gizmo_battery_t;
+
 /**
  * @brief Bring up the board: settings storage, display, touch and LVGL task.
  *
@@ -39,6 +47,15 @@ int gizmo_core_get_brightness(void);
  * @param persist true to also save it so it is restored on boot.
  */
 esp_err_t gizmo_core_set_brightness(int percent, bool persist);
+
+/**
+ * @brief Get the latest battery state.
+ *
+ * Returns a value cached by a background task that polls the PMIC every
+ * second (and keeps charging enabled only while USB power is present), so it
+ * is cheap and safe to call from LVGL timers.
+ */
+esp_err_t gizmo_core_get_battery(gizmo_battery_t *out);
 
 /**
  * @brief LVGL encoder input from the Module HMI.
