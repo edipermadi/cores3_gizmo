@@ -8,6 +8,9 @@
 #include "hmi.h"
 #include "power.h"
 #include "settings.h"
+#include "timesync.h"
+#include "timezones.h"
+#include "wifi.h"
 
 static const char *TAG = "gizmo_core";
 
@@ -95,6 +98,14 @@ esp_err_t gizmo_core_init(void)
         ESP_LOGW(TAG, "Battery status unavailable: %s", esp_err_to_name(err));
     }
 
+    timesync_init();
+
+    /* Network is optional for the UI: log and carry on. */
+    err = wifi_init();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Wi-Fi init failed: %s", esp_err_to_name(err));
+    }
+
     /* Optional hardware: carry on with touch only if the module is absent. */
     err = hmi_init();
     if (err != ESP_OK && err != ESP_ERR_NOT_FOUND) {
@@ -106,6 +117,66 @@ esp_err_t gizmo_core_init(void)
 esp_err_t gizmo_core_get_battery(gizmo_battery_t *out)
 {
     return power_get_battery(out);
+}
+
+esp_err_t gizmo_core_wifi_scan(void)
+{
+    return wifi_scan_start();
+}
+
+int gizmo_core_wifi_get_scan_results(gizmo_wifi_ap_t *out, int max)
+{
+    return wifi_get_scan_results(out, max);
+}
+
+esp_err_t gizmo_core_wifi_connect(const char *ssid, const char *password)
+{
+    return wifi_connect(ssid, password);
+}
+
+esp_err_t gizmo_core_wifi_forget(void)
+{
+    return wifi_forget();
+}
+
+void gizmo_core_wifi_get_status(gizmo_wifi_status_t *out)
+{
+    wifi_get_status(out);
+}
+
+bool gizmo_core_time_is_valid(void)
+{
+    return timesync_is_valid();
+}
+
+bool gizmo_core_time_is_ntp_synced(void)
+{
+    return timesync_is_ntp_synced();
+}
+
+int gizmo_core_tz_count(void)
+{
+    return g_timezone_count;
+}
+
+const char *gizmo_core_tz_name(int index)
+{
+    return (index >= 0 && index < g_timezone_count) ? g_timezones[index].name : NULL;
+}
+
+int gizmo_core_tz_offset_min(int index)
+{
+    return (index >= 0 && index < g_timezone_count) ? g_timezones[index].std_offset_min : 0;
+}
+
+int gizmo_core_tz_get(void)
+{
+    return timesync_tz_get();
+}
+
+esp_err_t gizmo_core_tz_set(int index)
+{
+    return timesync_tz_set(index);
 }
 
 lv_indev_t *gizmo_core_get_encoder(void)

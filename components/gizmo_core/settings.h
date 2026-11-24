@@ -5,6 +5,8 @@
  * @brief Persistent settings in NVS (private to gizmo_core).
  */
 
+#include <stddef.h>
+
 #include "esp_err.h"
 #include "gizmo_core.h"
 
@@ -18,3 +20,9 @@ int settings_get_brightness(void);
 
 /** Persist brightness percent to NVS. */
 esp_err_t settings_set_brightness(int percent);
+
+/** Load the stored IANA timezone name into buf. ESP_ERR_NOT_FOUND if none stored. */
+esp_err_t settings_get_timezone(char *buf, size_t len);
+
+/** Persist the IANA timezone name. */
+esp_err_t settings_set_timezone(const char *name);

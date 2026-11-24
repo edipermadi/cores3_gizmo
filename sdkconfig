@@ -3872,6 +3872,10 @@ CONFIG_WL_SECTOR_SIZE=4096
 CONFIG_GIZMO_HMI_COUNTS_PER_STEP=1
 # default:
 # CONFIG_GIZMO_HMI_REVERSE is not set
+# default:
+CONFIG_GIZMO_NTP_SERVER="pool.ntp.org"
+# default:
+CONFIG_GIZMO_DEFAULT_TIMEZONE="Etc/UTC"
 # end of Gizmo core
 
 #

@@ -13,4 +13,19 @@ menu "Gizmo core"
         bool "Reverse Module HMI encoder direction"
         default n
 
+    config GIZMO_NTP_SERVER
+        string "NTP server"
+        default "pool.ntp.org"
+        help
+            Queried once Wi-Fi is connected; lwIP re-syncs periodically.
+
+    config GIZMO_DEFAULT_TIMEZONE
+        string "Default timezone (IANA name)"
+        default "Etc/UTC"
+        help
+            Used until a timezone is picked in Settings -> Time, e.g.
+            "Asia/Singapore", "Europe/Berlin", "America/New_York".
+            Must be one of the zones in components/gizmo_core/timezones.c;
+            unknown names fall back to Etc/UTC.
+
 endmenu

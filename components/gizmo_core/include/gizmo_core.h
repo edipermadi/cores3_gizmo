@@ -30,6 +30,36 @@ typedef struct {
     int percent;         /**< State of charge 0..100, or -1 if unknown. */
 } gizmo_battery_t;
 
+/** Maximum networks kept from one Wi-Fi scan. */
+#define GIZMO_WIFI_MAX_APS 16
+
+/** Wi-Fi station state. */
+typedef enum {
+    GIZMO_WIFI_OFF,          /**< Wi-Fi not initialised. */
+    GIZMO_WIFI_DISCONNECTED, /**< Idle, no network configured or user disconnected. */
+    GIZMO_WIFI_CONNECTING,   /**< Associating / waiting for IP / retrying. */
+    GIZMO_WIFI_CONNECTED,    /**< Associated and has an IP address. */
+    GIZMO_WIFI_FAILED,       /**< Gave up; see fail_reason. */
+} gizmo_wifi_state_t;
+
+/** Snapshot of the Wi-Fi station. */
+typedef struct {
+    gizmo_wifi_state_t state;
+    char ssid[33];             /**< Network being used or last attempted. */
+    char ip[16];               /**< Dotted IPv4 address when connected. */
+    int rssi;                  /**< Signal strength in dBm when connected. */
+    const char *fail_reason;   /**< Human-readable reason when FAILED, else NULL. */
+    bool scanning;             /**< A scan is in progress. */
+    uint32_t scan_generation;  /**< Increments each time new scan results are ready. */
+} gizmo_wifi_status_t;
+
+/** One network from a scan. */
+typedef struct {
+    char ssid[33];
+    int rssi;      /**< dBm */
+    bool secure;   /**< Needs a password. */
+} gizmo_wifi_ap_t;
+
 /**
  * @brief Bring up the board: settings storage, display, touch and LVGL task.
  *
@@ -56,6 +86,63 @@ esp_err_t gizmo_core_set_brightness(int percent, bool persist);
  * is cheap and safe to call from LVGL timers.
  */
 esp_err_t gizmo_core_get_battery(gizmo_battery_t *out);
+
+/**
+ * @brief Start an asynchronous Wi-Fi scan.
+ *
+ * Poll gizmo_core_wifi_get_status(); when scan_generation changes, fetch the
+ * results with gizmo_core_wifi_get_scan_results().
+ */
+esp_err_t gizmo_core_wifi_scan(void);
+
+/** Copy up to max networks from the last scan, strongest first. Returns the count. */
+int gizmo_core_wifi_get_scan_results(gizmo_wifi_ap_t *out, int max);
+
+/**
+ * @brief Connect to a network and remember it for the next boot.
+ *
+ * @param ssid     Network name.
+ * @param password NULL or "" for open networks.
+ */
+esp_err_t gizmo_core_wifi_connect(const char *ssid, const char *password);
+
+/** Disconnect and forget the saved network. */
+esp_err_t gizmo_core_wifi_forget(void);
+
+/** Current Wi-Fi state. Non-blocking; safe to call from LVGL timers. */
+void gizmo_core_wifi_get_status(gizmo_wifi_status_t *out);
+
+/**
+ * @brief Whether the system clock holds a real time.
+ *
+ * True after the time is restored from the battery-backed BM8563 RTC at boot,
+ * or after the first NTP sync once Wi-Fi connects. Read the time with time() /
+ * localtime_r(), which use the timezone chosen with gizmo_core_tz_set().
+ */
+bool gizmo_core_time_is_valid(void);
+
+/** Whether NTP has synced at least once since boot (RTC time is then refreshed). */
+bool gizmo_core_time_is_ntp_synced(void);
+
+/** Number of built-in timezones (ordered west to east by UTC offset). */
+int gizmo_core_tz_count(void);
+
+/** IANA name of timezone index, e.g. "Asia/Singapore"; NULL if out of range. */
+const char *gizmo_core_tz_name(int index);
+
+/** Standard (non-DST) UTC offset of timezone index, in minutes. */
+int gizmo_core_tz_offset_min(int index);
+
+/** Index of the active timezone. */
+int gizmo_core_tz_get(void);
+
+/**
+ * @brief Switch timezone.
+ *
+ * Takes effect immediately for localtime_r() and is saved to NVS for the next
+ * boot. The RTC keeps UTC, so it is unaffected.
+ */
+esp_err_t gizmo_core_tz_set(int index);
 
 /**
  * @brief LVGL encoder input from the Module HMI.

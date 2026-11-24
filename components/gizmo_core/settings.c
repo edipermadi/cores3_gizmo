@@ -10,6 +10,7 @@ static const char *TAG = "settings";
 
 #define NVS_NAMESPACE   "gizmo"
 #define KEY_BRIGHTNESS  "brightness"
+#define KEY_TIMEZONE    "timezone"
 
 esp_err_t settings_init(void)
 {
@@ -42,6 +43,33 @@ esp_err_t settings_set_brightness(int percent)
         return err;
     }
     err = nvs_set_u8(h, KEY_BRIGHTNESS, (uint8_t)percent);
+    if (err == ESP_OK) {
+        err = nvs_commit(h);
+    }
+    nvs_close(h);
+    return err;
+}
+
+esp_err_t settings_get_timezone(char *buf, size_t len)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        return err == ESP_ERR_NVS_NOT_FOUND ? ESP_ERR_NOT_FOUND : err;
+    }
+    err = nvs_get_str(h, KEY_TIMEZONE, buf, &len);
+    nvs_close(h);
+    return err == ESP_ERR_NVS_NOT_FOUND ? ESP_ERR_NOT_FOUND : err;
+}
+
+esp_err_t settings_set_timezone(const char *name)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = nvs_set_str(h, KEY_TIMEZONE, name);
     if (err == ESP_OK) {
         err = nvs_commit(h);
     }
