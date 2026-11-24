@@ -1,7 +1,7 @@
 /*
  * Home screen: launcher with horizontally swipeable pages.
  *
- *   page 1   Clock, Spectrum (apps)
+ *   page 1   Clock, Spectrum, Hopper (apps)
  *   page 2   Settings, Diagnostics (system)
  *
  * A tileview holds one tile per page; dots at the bottom show the active page.
@@ -28,6 +28,12 @@ static void open_clock_cb(lv_event_t *e)
 {
     (void)e;
     ui_show_clock();
+}
+
+static void open_game_cb(lv_event_t *e)
+{
+    (void)e;
+    ui_show_game();
 }
 
 static void open_spectrum_cb(lv_event_t *e)
@@ -172,6 +178,7 @@ lv_obj_t *ui_home_create(lv_group_t *group)
     lv_obj_t *clock_btn = create_app_icon(s_tiles[0], group, NULL, "Clock", open_clock_cb);
     add_clock_glyph(clock_btn);
     create_app_icon(s_tiles[0], group, LV_SYMBOL_AUDIO, "Spectrum", open_spectrum_cb);
+    create_app_icon(s_tiles[0], group, LV_SYMBOL_PLAY, "Hopper", open_game_cb);
 
     /* Page 2: system */
     s_tiles[1] = add_page(1);

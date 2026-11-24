@@ -290,6 +290,16 @@ esp_err_t gizmo_core_pref_set_u8(const char *key, uint8_t value)
     return settings_set_u8(key, value);
 }
 
+uint32_t gizmo_core_pref_get_u32(const char *key, uint32_t def)
+{
+    return settings_get_u32(key, def);
+}
+
+esp_err_t gizmo_core_pref_set_u32(const char *key, uint32_t value)
+{
+    return settings_set_u32(key, value);
+}
+
 lv_indev_t *gizmo_core_get_encoder(void)
 {
     return hmi_get_indev();

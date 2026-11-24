@@ -243,6 +243,12 @@ uint8_t gizmo_core_pref_get_u8(const char *key, uint8_t def);
 /** Persist a small preference (NVS). */
 esp_err_t gizmo_core_pref_set_u8(const char *key, uint8_t value);
 
+/** Read a 32-bit persistent preference (e.g. a high score); def if unset. */
+uint32_t gizmo_core_pref_get_u32(const char *key, uint32_t def);
+
+/** Persist a 32-bit preference (NVS). */
+esp_err_t gizmo_core_pref_set_u32(const char *key, uint32_t value);
+
 /**
  * @brief LVGL encoder input from the Module HMI.
  *

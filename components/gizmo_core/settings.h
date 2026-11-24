@@ -33,3 +33,9 @@ uint8_t settings_get_u8(const char *key, uint8_t def);
 
 /** Persist a generic small preference. */
 esp_err_t settings_set_u8(const char *key, uint8_t value);
+
+/** Generic 32-bit preference; returns def if unset. */
+uint32_t settings_get_u32(const char *key, uint32_t def);
+
+/** Persist a generic 32-bit preference. */
+esp_err_t settings_set_u32(const char *key, uint32_t value);

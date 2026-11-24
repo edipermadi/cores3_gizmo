@@ -70,6 +70,11 @@ shot clock_b
 tap $BTN_LEFT 0.6
 back
 
+# Hopper (page 1, third icon): start screen.
+tap 260 98 1.0
+shot game
+back
+
 # Spectrum (page 1, second icon): capture the current view, toggle, capture.
 tap 160 98 2.5
 shot spectrum_a

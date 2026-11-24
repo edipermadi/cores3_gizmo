@@ -104,3 +104,31 @@ esp_err_t settings_set_u8(const char *key, uint8_t value)
     nvs_close(h);
     return err;
 }
+
+uint32_t settings_get_u32(const char *key, uint32_t def)
+{
+    nvs_handle_t h;
+    uint32_t value = def;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) == ESP_OK) {
+        if (nvs_get_u32(h, key, &value) != ESP_OK) {
+            value = def;
+        }
+        nvs_close(h);
+    }
+    return value;
+}
+
+esp_err_t settings_set_u32(const char *key, uint32_t value)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = nvs_set_u32(h, key, value);
+    if (err == ESP_OK) {
+        err = nvs_commit(h);
+    }
+    nvs_close(h);
+    return err;
+}

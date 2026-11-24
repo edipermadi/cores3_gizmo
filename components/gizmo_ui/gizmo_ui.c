@@ -10,6 +10,7 @@ static lv_obj_t *s_settings_scr;
 static lv_obj_t *s_diag_scr;
 static lv_obj_t *s_spectrum_scr;
 static lv_obj_t *s_clock_scr;
+static lv_obj_t *s_game_scr;
 static lv_group_t *s_home_group;
 
 /* ---------- encoder groups ---------- */
@@ -103,6 +104,7 @@ void ui_show_home(void)
     /* Leaving the spectrum page: stop the microphones. No-op otherwise. */
     ui_spectrum_on_hide();
     ui_clock_on_hide();
+    ui_game_on_hide();
 
     /* Persist on leave as well: the encoder back button skips the slider's
      * release event, which is where touch input saves. */
@@ -119,6 +121,13 @@ void ui_show_settings(void)
     ui_settings_on_show();
     ui_use_group(ui_settings_group());
     lv_screen_load_anim(s_settings_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
+}
+
+void ui_show_game(void)
+{
+    ui_game_on_show();
+    ui_use_group(ui_game_group());
+    lv_screen_load_anim(s_game_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
 }
 
 void ui_show_clock(void)
@@ -154,6 +163,7 @@ void gizmo_ui_init(void)
     s_diag_scr = ui_diag_create();
     s_spectrum_scr = ui_spectrum_create();
     s_clock_scr = ui_clock_create();
+    s_game_scr = ui_game_create();
 
     ui_status_start();
     ui_use_group(s_home_group);

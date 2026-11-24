@@ -14,6 +14,7 @@
  *  - ui_diag.c     "Diagnostics" screen: I2C scan and PMU tabs
  *  - ui_spectrum.c "Spectrum" screen: live microphone spectrum
  *  - ui_clock.c    "Clock" screen: analog / digital, 24h / 12h
+ *  - ui_game.c     "Hopper" mini game (original endless runner)
  */
 
 #include <stdbool.h>
@@ -91,6 +92,7 @@ void ui_show_settings(void);
 void ui_show_diag(void);
 void ui_show_spectrum(void);
 void ui_show_clock(void);
+void ui_show_game(void);
 
 /**
  * Pages other than home are full screen with no back button: HMI button 1
@@ -121,6 +123,12 @@ void ui_settings_refresh_group(void);
 void ui_settings_on_show(void);
 
 void ui_display_tab_create(lv_obj_t *page);
+
+lv_obj_t *ui_game_create(void);
+lv_group_t *ui_game_group(void);
+/** Start / stop the game's frame timer with the screen. */
+void ui_game_on_show(void);
+void ui_game_on_hide(void);
 
 lv_obj_t *ui_clock_create(void);
 lv_group_t *ui_clock_group(void);

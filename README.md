@@ -33,7 +33,7 @@ network name, IP address, timezone and nearby networks are blurred on capture.
 | Path | Role |
 | --- | --- |
 | `components/gizmo_core` | Board layer: display, backlight, NVS settings, battery/charging (AXP2101), Wi-Fi station, Module HMI encoder |
-| `components/gizmo_ui` | LVGL screens; uses only `gizmo_core.h`. One file per screen/tab: `ui_home.c`, `ui_settings.c`, `ui_display.c`, `ui_network.c`, `ui_diag.c`, `ui_spectrum.c`, shared bits in `ui_common.c` |
+| `components/gizmo_ui` | LVGL screens; uses only `gizmo_core.h`. One file per screen/tab: `ui_home.c`, `ui_clock.c`, `ui_game.c`, `ui_settings.c`, `ui_display.c`, `ui_network.c`, `ui_diag.c`, `ui_spectrum.c`, shared bits in `ui_common.c` |
 | `components/gizmo_console` | Serial command console (screenshot, simulated touch) |
 | `main` | `app_main`: init core, build UI, start console |
 
@@ -51,6 +51,10 @@ On the Network tab, pick a network to connect; secured networks ask for a
 password on an on-screen keyboard (encoder: rotate over keys, push to type).
 The last network that connected is remembered and rejoined at boot;
 the ✕ button forgets it.
+
+**Hopper** (home page 1) is a small original endless runner: tap the screen
+or push the encoder to make the robot hop over crates. It speeds up over time;
+the best score is saved.
 
 Settings → Display has a **Dark mode** switch. Changing it saves the choice
 and restarts the device (~2 s) so every screen is rebuilt in the new palette.
