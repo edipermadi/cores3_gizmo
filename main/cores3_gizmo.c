@@ -1,4 +1,5 @@
 #include "esp_log.h"
+#include "gizmo_console.h"
 #include "gizmo_core.h"
 #include "gizmo_ui.h"
 
@@ -19,4 +20,10 @@ void app_main(void)
     gizmo_core_unlock();
 
     ESP_LOGI(TAG, "UI started, brightness %d%%", gizmo_core_get_brightness());
+
+    /* Serial commands (screenshot, touch) on the USB port. */
+    err = gizmo_console_start();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Console not started: %s", esp_err_to_name(err));
+    }
 }

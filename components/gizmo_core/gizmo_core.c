@@ -1,12 +1,8 @@
 #include "gizmo_core.h"
 
 #include "bsp/esp-bsp.h"
-#include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "esp_check.h"
-#include "esp_rom_sys.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "esp_log.h"
 #include "hmi.h"
 #include "power.h"
@@ -30,81 +26,8 @@ static int clamp_brightness(int percent)
     return percent;
 }
 
-#define I2C_BUS_WAIT_MS   5000   /* how long to wait for a busy bus at boot */
-#define I2C_BUS_RETRY_MS  50
-
-/** One bus-recovery attempt: 9 SCL clocks while SDA is low, then a STOP. */
-static bool i2c_bus_recover_once(gpio_num_t sda, gpio_num_t scl)
-{
-    gpio_set_level(sda, 1);
-    gpio_set_level(scl, 1);
-    esp_rom_delay_us(50);
-    if (gpio_get_level(scl) && gpio_get_level(sda)) {
-        return true;
-    }
-    for (int i = 0; i < 9 && !gpio_get_level(sda); i++) {
-        gpio_set_level(scl, 0);
-        esp_rom_delay_us(5);
-        gpio_set_level(scl, 1);
-        esp_rom_delay_us(5);
-    }
-    gpio_set_level(sda, 0);
-    esp_rom_delay_us(5);
-    gpio_set_level(sda, 1);
-    esp_rom_delay_us(5);
-    return gpio_get_level(scl) && gpio_get_level(sda);
-}
-
-/**
- * Wait for the internal I2C bus to be idle before the BSP uses it.
- *
- * A device on the bus can hold SCL low: after a USB (esptool) reset because
- * bus devices are not reset, and after power-on while a device (e.g. a stacked
- * module's MCU) is still starting up. The BSP's first PMIC write would then
- * fail with ESP_ERROR_CHECK. Retry recovery for up to I2C_BUS_WAIT_MS and log
- * how long the bus took to free up.
- */
-static esp_err_t check_i2c_bus(void)
-{
-    const gpio_num_t sda = BSP_I2C_SDA, scl = BSP_I2C_SCL;
-
-    gpio_config_t io = {
-        .pin_bit_mask = (1ULL << sda) | (1ULL << scl),
-        .mode = GPIO_MODE_INPUT_OUTPUT_OD,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-    };
-    gpio_config(&io);
-
-    int waited = 0;
-    bool ok = i2c_bus_recover_once(sda, scl);
-    if (!ok) {
-        ESP_LOGW(TAG, "I2C bus busy (SDA=%d SCL=%d), waiting up to %d ms",
-                 gpio_get_level(sda), gpio_get_level(scl), I2C_BUS_WAIT_MS);
-    }
-    while (!ok && waited < I2C_BUS_WAIT_MS) {
-        vTaskDelay(pdMS_TO_TICKS(I2C_BUS_RETRY_MS));
-        waited += I2C_BUS_RETRY_MS;
-        ok = i2c_bus_recover_once(sda, scl);
-    }
-
-    int sda_lvl = gpio_get_level(sda), scl_lvl = gpio_get_level(scl);
-    gpio_reset_pin(sda);
-    gpio_reset_pin(scl);
-
-    if (!ok) {
-        ESP_LOGE(TAG, "I2C bus still held after %d ms (SDA=%d SCL=%d). "
-                      "Press the RST button.", waited, sda_lvl, scl_lvl);
-        return ESP_ERR_INVALID_STATE;
-    }
-    if (waited) {
-        ESP_LOGW(TAG, "I2C bus free after %d ms", waited);
-    }
-    return ESP_OK;
-}
-
 esp_err_t gizmo_core_init(void)
 {
-    ESP_RETURN_ON_ERROR(check_i2c_bus(), TAG, "I2C bus stuck");
     ESP_RETURN_ON_ERROR(settings_init(), TAG, "settings init failed");
 
     if (bsp_display_start() == NULL) {

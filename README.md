@@ -16,7 +16,8 @@ navigation by touch or by the M5Stack Module HMI encoder.
 | --- | --- |
 | `components/gizmo_core` | Board layer: display, backlight, NVS settings, battery/charging (AXP2101), Wi-Fi station, Module HMI encoder |
 | `components/gizmo_ui` | LVGL screens; uses only `gizmo_core.h`. One file per screen/tab: `ui_home.c`, `ui_settings.c`, `ui_display.c`, `ui_network.c`, shared bits in `ui_common.c` |
-| `main` | `app_main`: init core, build UI |
+| `components/gizmo_console` | Serial command console (screenshot, simulated touch) |
+| `main` | `app_main`: init core, build UI, start console |
 
 ## Controls
 
@@ -56,3 +57,22 @@ make help
 ```
 
 Pass `IDF_ACTIVATE=/path/to/activate_idf_vX.sh` if ESP-IDF is installed elsewhere.
+
+## Serial console
+
+A linenoise console (`gizmo>`) runs on the USB port; use it from
+`make monitor` or script it with `tools/gizmo.py`:
+
+```sh
+make screenshot                  # -> screenshot.png (OUT=file.png)
+make touch X=60 Y=98             # tap at 60,98 (MS=600 for a long press)
+make swipe X1=145 Y1=150 X2=260 Y2=150   # drag (MS=300 default)
+python tools/gizmo.py cmd help   # any console command
+```
+
+| Command | Effect |
+| --- | --- |
+| `screenshot` | Active screen as RGB565, zlib-compressed (ROM deflate), base64 between `SCREENSHOT BEGIN/END` lines (~3 KB per frame) |
+| `touch X Y [MS]` | Tap at X,Y held for MS ms (default 100), via a virtual LVGL pointer |
+| `swipe X1 Y1 X2 Y2 [MS]` | Press at X1,Y1, move linearly to X2,Y2 over MS ms (default 300), release |
+
