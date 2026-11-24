@@ -145,6 +145,14 @@ int gizmo_core_tz_get(void);
 esp_err_t gizmo_core_tz_set(int index);
 
 /**
+ * @brief Switch the device off (backlight off, then PMIC power-off).
+ *
+ * Also triggered automatically by a short press of the power key on the left
+ * side. Does not return when running on battery.
+ */
+void gizmo_core_power_off(void);
+
+/**
  * @brief LVGL encoder input from the Module HMI.
  *
  * Rotate = next/prev (or change value when editing), encoder push = enter,

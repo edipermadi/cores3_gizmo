@@ -14,6 +14,14 @@
  *   0x01 PMU status 2   bits[6:5] battery current: 00 standby, 01 charge, 10 discharge
  *   0x18 charger/gauge  bit3 fuel gauge enable, bit1 cell battery charge enable
  *   0xA4 battery %      fuel gauge state of charge, 0..100
+ *   0x10 common config  bit0 software power-off
+ *   0x41 IRQ enable 2   bit3 power key short press
+ *   0x48-0x4A IRQ status (write 1 to clear); 0x49 bit3 power key short press
+ *
+ * Power key (left side button, AXP2101 PWRON): a short press powers the device
+ * off. A long press still does the PMIC's own hard power-off. Presses during
+ * the first BOOT_GRACE_MS are ignored, so the press used to switch the device
+ * on can't immediately switch it off again.
  */
 #include "power.h"
 
@@ -30,17 +38,26 @@ static const char *TAG = "power";
 
 #define AXP2101_ADDR        0x34
 #define AXP_TIMEOUT_MS      50
-#define POLL_MS             1000
+#define POLL_MS             1000    /* battery / charge policy */
+#define KEY_POLL_MS         100     /* power key responsiveness */
+#define BOOT_GRACE_MS       3000
 
 #define REG_STATUS1         0x00
 #define REG_STATUS2         0x01
 #define REG_CHG_GAUGE_CTRL  0x18
 #define REG_BATT_PERCENT    0xA4
+#define REG_COMMON_CFG      0x10
+#define REG_IRQ_EN2         0x41
+#define REG_IRQ_STS1        0x48
+#define REG_IRQ_STS2        0x49
+#define REG_IRQ_STS3        0x4A
 
 #define STATUS1_VBUS_GOOD   (1 << 5)
 #define STATUS1_BATT_EXIST  (1 << 3)
 #define CTRL_GAUGE_EN       (1 << 3)
 #define CTRL_CHARGE_EN      (1 << 1)
+#define CFG_SOFT_PWROFF     (1 << 0)
+#define IRQ2_PKEY_SHORT     (1 << 3)
 
 static i2c_master_dev_handle_t s_axp;
 static gizmo_battery_t s_state = { .percent = -1 };
@@ -100,21 +117,74 @@ static esp_err_t poll_once(gizmo_battery_t *out)
     return ESP_OK;
 }
 
+/** Clear every latched PMIC interrupt flag (write-1-to-clear). */
+static void clear_irqs(void)
+{
+    axp_write(REG_IRQ_STS1, 0xFF);
+    axp_write(REG_IRQ_STS2, 0xFF);
+    axp_write(REG_IRQ_STS3, 0xFF);
+}
+
+void power_off(void)
+{
+    ESP_LOGW(TAG, "Powering off");
+    /* Backlight off first so the screen goes dark immediately, then cut power. */
+    bsp_display_brightness_set(0);
+    bsp_display_backlight_off();
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    uint8_t cfg = 0;
+    axp_read(REG_COMMON_CFG, &cfg);
+    axp_write(REG_COMMON_CFG, cfg | CFG_SOFT_PWROFF);
+
+    /* Still running: USB power can keep the system up on some boards. */
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    ESP_LOGW(TAG, "Power-off did not take effect (external power?)");
+}
+
+/** True once if the power key was short-pressed since the last check. */
+static bool power_key_pressed(void)
+{
+    uint8_t sts;
+    if (axp_read(REG_IRQ_STS2, &sts) != ESP_OK || !(sts & IRQ2_PKEY_SHORT)) {
+        return false;
+    }
+    axp_write(REG_IRQ_STS2, IRQ2_PKEY_SHORT);
+    return true;
+}
+
 static void power_task(void *arg)
 {
     (void)arg;
+    const TickType_t grace_end = xTaskGetTickCount() + pdMS_TO_TICKS(BOOT_GRACE_MS);
+    bool grace = true;
+    int ticks_to_poll = 0;
+
     while (true) {
-        gizmo_battery_t b;
-        bool ok = poll_once(&b) == ESP_OK;
-
-        taskENTER_CRITICAL(&s_lock);
-        if (ok) {
-            s_state = b;
+        if (grace && xTaskGetTickCount() >= grace_end) {
+            /* Drop anything left over from the power-on press. */
+            clear_irqs();
+            grace = false;
         }
-        s_valid = ok;
-        taskEXIT_CRITICAL(&s_lock);
+        if (!grace && power_key_pressed()) {
+            ESP_LOGI(TAG, "Power key short press");
+            power_off();
+        }
 
-        vTaskDelay(pdMS_TO_TICKS(POLL_MS));
+        if (--ticks_to_poll <= 0) {
+            ticks_to_poll = POLL_MS / KEY_POLL_MS;
+            gizmo_battery_t b;
+            bool ok = poll_once(&b) == ESP_OK;
+
+            taskENTER_CRITICAL(&s_lock);
+            if (ok) {
+                s_state = b;
+            }
+            s_valid = ok;
+            taskEXIT_CRITICAL(&s_lock);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(KEY_POLL_MS));
     }
 }
 
@@ -133,6 +203,11 @@ esp_err_t power_init(void)
 
     ESP_RETURN_ON_ERROR(axp_update_bits(REG_CHG_GAUGE_CTRL, CTRL_GAUGE_EN, true, NULL),
                         TAG, "enable gauge failed");
+
+    /* Power key: latch short presses, and start from a clean slate. */
+    ESP_RETURN_ON_ERROR(axp_update_bits(REG_IRQ_EN2, IRQ2_PKEY_SHORT, true, NULL),
+                        TAG, "enable power key IRQ failed");
+    clear_irqs();
 
     /* First poll synchronously so the UI has real data on its first frame. */
     gizmo_battery_t b;

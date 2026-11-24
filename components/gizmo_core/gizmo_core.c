@@ -179,6 +179,11 @@ esp_err_t gizmo_core_tz_set(int index)
     return timesync_tz_set(index);
 }
 
+void gizmo_core_power_off(void)
+{
+    power_off();
+}
+
 lv_indev_t *gizmo_core_get_encoder(void)
 {
     return hmi_get_indev();
