@@ -36,7 +36,7 @@ Requires ESP-IDF v6.1. The Makefile activates it per command.
 
 ```sh
 make            # build
-make run        # flash + monitor (PORT=/dev/ttyACM0)
+make run        # flash + monitor (port auto-detected, or PORT=/dev/ttyACM1)
 make menuconfig
 make docs       # Doxygen HTML in docs/html/index.html
 make help

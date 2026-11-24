@@ -1,7 +1,7 @@
 # Convenience wrapper around idf.py and doxygen.
 #
 #   make              build firmware
-#   make flash        flash (PORT=/dev/ttyACM0 by default)
+#   make flash        flash (port auto-detected; override with PORT=/dev/ttyACMx)
 #   make monitor      serial monitor
 #   make run          flash + monitor
 #   make menuconfig   edit sdkconfig
@@ -13,9 +13,10 @@
 
 SHELL        := /bin/bash
 IDF_ACTIVATE ?= $(HOME)/.espressif/tools/activate_idf_v6.1.sh
-PORT         ?= /dev/ttyACM0
+PORT         ?=
 
 IDF := source "$(IDF_ACTIVATE)" >/dev/null 2>&1 && idf.py
+PORT_ARG := $(if $(PORT),-p $(PORT))
 
 DOXYGEN  ?= doxygen
 DOCS_DIR := docs
@@ -31,13 +32,13 @@ build:
 	$(IDF) build
 
 flash:
-	$(IDF) -p $(PORT) flash
+	$(IDF) $(PORT_ARG) flash
 
 monitor:
-	$(IDF) -p $(PORT) monitor
+	$(IDF) $(PORT_ARG) monitor
 
 run:
-	$(IDF) -p $(PORT) flash monitor
+	$(IDF) $(PORT_ARG) flash monitor
 
 menuconfig:
 	$(IDF) menuconfig
