@@ -229,7 +229,11 @@ static void create_status(lv_obj_t *hdr)
     lv_obj_set_style_pad_column(box, 4, 0);
     lv_obj_remove_flag(box, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_flex_flow(box, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(box, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    /* START, not END: with LV_SIZE_CONTENT, END places children from the right
+     * edge of the not-yet-grown box, they overflow to the left, the content
+     * size never counts them, and they get clipped. The box itself is already
+     * right-aligned in the header. */
+    lv_obj_set_flex_align(box, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     w->wifi = lv_label_create(box);
     lv_label_set_text(w->wifi, LV_SYMBOL_WIFI);
