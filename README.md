@@ -12,13 +12,17 @@ network name, IP address, timezone and nearby networks are blurred on capture.
 | | |
 | --- | --- |
 | ![Home, page 1](assets/screenshots/home.png) | ![Home, page 2](assets/screenshots/home_page2.png) |
-| Home page 1 (apps); the status bar is shown on home only | Home page 2 (system); swipe between pages |
+| Home page 1 (apps); the status bar is shown on home only | Home page 2 (toys); swipe between pages |
+| ![Home, page 3](assets/screenshots/home_page3.png) | ![Life](assets/screenshots/life.png) |
+| Home page 3: Settings and Diagnostics, always the last page | Life: 2D cellular automata |
 | ![Settings, Display tab](assets/screenshots/settings_display.png) | ![Settings, Network tab](assets/screenshots/settings_network.png) |
 | Settings → Display: brightness, dark / light mode | Settings → Network: Wi-Fi status, timezone, networks (private text blurred) |
 | ![Clock, digital](assets/screenshots/clock_digital.png) | ![Clock, analog](assets/screenshots/clock_analog.png) |
 | Clock, digital (24h or 12h) | Clock, analog |
 | ![Spectrum, bars](assets/screenshots/spectrum_bars.png) | ![Spectrum, waterfall](assets/screenshots/spectrum_waterfall.png) |
 | Spectrum, bars view with peak hold | Spectrum, waterfall view (tap or encoder push to switch) |
+| ![Hopper](assets/screenshots/game.png) | |
+| Hopper: tap or push the encoder to jump | |
 | ![Diagnostics, I2C tab](assets/screenshots/diag_i2c.png) | ![Diagnostics, Power tab](assets/screenshots/diag_power.png) |
 | Diagnostics → I2C: devices on the internal bus | Diagnostics → Power: AXP2101 readings |
 
@@ -33,7 +37,7 @@ network name, IP address, timezone and nearby networks are blurred on capture.
 | Path | Role |
 | --- | --- |
 | `components/gizmo_core` | Board layer: display, backlight, NVS settings, battery/charging (AXP2101), Wi-Fi station, Module HMI encoder |
-| `components/gizmo_ui` | LVGL screens; uses only `gizmo_core.h`. One file per screen/tab: `ui_home.c`, `ui_clock.c`, `ui_game.c`, `ui_settings.c`, `ui_display.c`, `ui_network.c`, `ui_diag.c`, `ui_spectrum.c`, shared bits in `ui_common.c` |
+| `components/gizmo_ui` | LVGL screens; uses only `gizmo_core.h`. One file per screen/tab: `ui_home.c`, `ui_clock.c`, `ui_game.c`, `ui_life.c`, `ui_cyclic.c`, `ui_brain.c`, `ui_settings.c`, `ui_display.c`, `ui_network.c`, `ui_diag.c`, `ui_spectrum.c`, shared bits in `ui_common.c` |
 | `components/gizmo_console` | Serial command console (screenshot, simulated touch) |
 | `main` | `app_main`: init core, build UI, start console |
 
@@ -55,6 +59,25 @@ the ✕ button forgets it.
 **Hopper** (home page 1) is a small original endless runner: tap the screen
 or push the encoder to make the robot hop over crates. It speeds up over time;
 the best score is saved.
+
+**Life** (home page 2) runs 2D cellular automata on an 80x60 wrapping grid
+(Life B3/S23, HighLife, Day & Night, Seeds, Maze); newborn cells are drawn
+brighter. Tap for a new random soup, long-press for the next rule.
+
+**Cyclic** (home page 2) is a cyclic cellular automaton: each of N colour
+states advances when enough neighbours are already in the next state, which
+turns random noise into rotating spirals (presets Spirals 313, Cyclic 14,
+Waves 8).
+
+**Brain** (home page 2) runs "Generations" automata with firing / dying / off
+cells: Brian's Brain (/2/3), Star Wars (345/2/4) and Frogs (12/34/3), full of
+gliders with fading tails.
+
+All three automaton pages: tap or push for new random noise, long-press for
+the next rule; they wrap at the edges and only run while shown.
+
+The battery charges only on USB power and stops at 100 % (resuming at 95 %),
+so a device left plugged in isn't kept topped up.
 
 Settings → Display has a **Dark mode** switch. Changing it saves the choice
 and restarts the device (~2 s) so every screen is rebuilt in the new palette.

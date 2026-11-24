@@ -25,7 +25,7 @@ extern "C" {
 /** Battery state from the power management chip. */
 typedef struct {
     bool present;        /**< A battery is connected. */
-    bool charging;       /**< Battery is currently charging (enabled only on USB power). */
+    bool charging;       /**< Battery is charging (only on USB power, paused at 100 % until 95 %). */
     bool external_power; /**< USB / bus 5 V is present. */
     int percent;         /**< State of charge 0..100, or -1 if unknown. */
 } gizmo_battery_t;

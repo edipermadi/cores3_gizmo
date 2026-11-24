@@ -6,7 +6,8 @@
  * serialises access per bus).
  *
  * A background task polls the PMIC once a second, enables battery charging
- * only while USB/bus 5 V is present, and caches the result so UI code can read
+ * only while USB/bus 5 V is present and the battery isn't full (stops at
+ * 100 %, resumes at 95 %), and caches the result so UI code can read
  * it without doing I2C.
  *
  * Registers used (AXP2101 datasheet):
@@ -73,7 +74,11 @@ static const char *TAG = "power";
 #define CFG_SOFT_PWROFF     (1 << 0)
 #define IRQ2_PKEY_SHORT     (1 << 3)
 
+#define CHARGE_STOP_PCT     100
+#define CHARGE_RESUME_PCT   95
+
 static i2c_master_dev_handle_t s_axp;
+static bool s_full_hold;   /* charging paused because the battery is full */
 static gizmo_pmu_info_t s_state = { .battery = { .percent = -1 } };
 static bool s_valid;
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -143,21 +148,33 @@ static esp_err_t poll_once(gizmo_pmu_info_t *out)
     b->external_power = (st1 & STATUS1_VBUS_GOOD) != 0;
     b->present = (st1 & STATUS1_BATT_EXIST) != 0;
 
+    if (b->present && axp_read(REG_BATT_PERCENT, &pct) == ESP_OK) {
+        b->percent = pct > 100 ? 100 : pct;
+    }
+
+    /* Full-charge hold with hysteresis: stop at 100 %, resume at <= 95 %, so
+     * the PMIC doesn't keep topping up (or toggle) around full. Unplugging
+     * clears the hold. */
+    if (!b->external_power || !b->present) {
+        s_full_hold = false;
+    } else if (b->percent >= CHARGE_STOP_PCT) {
+        s_full_hold = true;
+    } else if (b->percent >= 0 && b->percent <= CHARGE_RESUME_PCT) {
+        s_full_hold = false;
+    }
+    bool want_charge = b->external_power && b->present && !s_full_hold;
+
     bool changed = false;
-    ESP_RETURN_ON_ERROR(axp_update_bits(REG_CHG_GAUGE_CTRL, CTRL_CHARGE_EN,
-                                        b->external_power && b->present, &changed),
+    ESP_RETURN_ON_ERROR(axp_update_bits(REG_CHG_GAUGE_CTRL, CTRL_CHARGE_EN, want_charge, &changed),
                         TAG, "charge control failed");
     if (changed) {
-        ESP_LOGI(TAG, "Battery charging %s", b->external_power && b->present ? "enabled" : "disabled");
+        ESP_LOGI(TAG, "Battery charging %s%s", want_charge ? "enabled" : "disabled",
+                 s_full_hold ? " (full)" : "");
     }
 
     /* Read status 2 after the policy write so `charging` reflects it. */
     ESP_RETURN_ON_ERROR(axp_read(REG_STATUS2, &st2), TAG, "status2 read failed");
-    b->charging = b->present && ((st2 >> 5) & 0x03) == 0x01;
-
-    if (b->present && axp_read(REG_BATT_PERCENT, &pct) == ESP_OK) {
-        b->percent = pct > 100 ? 100 : pct;
-    }
+    b->charging = want_charge && ((st2 >> 5) & 0x03) == 0x01;
 
     /* Measurements; a failed read just leaves the field at -1. */
     int raw;
@@ -176,7 +193,9 @@ static esp_err_t poll_once(gizmo_pmu_info_t *out)
     }
     uint8_t icc;
     info.charge_limit_ma = axp_read(REG_CHG_CURRENT, &icc) == ESP_OK ? charge_limit_ma(icc) : -1;
-    info.charge_phase = b->present ? charge_phase_name(st2) : "No battery";
+    info.charge_phase = !b->present ? "No battery"
+                      : s_full_hold ? "Full (charge paused)"
+                      : charge_phase_name(st2);
     info.status1 = st1;
     info.status2 = st2;
 

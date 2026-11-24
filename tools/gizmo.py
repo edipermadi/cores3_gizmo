@@ -117,12 +117,17 @@ def rgb_to_png(rgb, w, h):
             + chunk(b"IEND", b""))
 
 
-def cmd_screenshot(s, out, blur=()):
+class CaptureError(Exception):
+    pass
+
+
+def _capture(s):
+    """One screenshot attempt -> (w, h, raw RGB565, zlen, stats). Raises CaptureError."""
     send(s, "screenshot")
     header, b64, stats = None, [], ""
     for line in read_lines(s, r"^SCREENSHOT END|screenshot: ", timeout=20):
         if line.startswith("screenshot: "):
-            sys.exit(f"device: {line}")
+            raise CaptureError(f"device: {line}")
         m = re.search(r"SCREENSHOT BEGIN w=(\d+) h=(\d+) fmt=(\S+) raw=(\d+) zlen=(\d+)", line)
         if m:
             header = m
@@ -136,16 +141,31 @@ def cmd_screenshot(s, out, blur=()):
         pass
 
     if not header:
-        sys.exit("no SCREENSHOT BEGIN seen")
+        raise CaptureError("no SCREENSHOT BEGIN seen")
     w, h, fmt, raw_len, zlen = int(header[1]), int(header[2]), header[3], int(header[4]), int(header[5])
     if fmt != "rgb565le":
-        sys.exit(f"unsupported format {fmt}")
+        raise CaptureError(f"unsupported format {fmt}")
     data = base64.b64decode("".join(b64))
     if len(data) != zlen:
-        sys.exit(f"got {len(data)} compressed bytes, expected {zlen} (log lines interleaved?)")
+        raise CaptureError(f"got {len(data)} compressed bytes, expected {zlen} (log lines interleaved?)")
     raw = zlib.decompress(data)
     if len(raw) != raw_len:
-        sys.exit(f"decompressed {len(raw)} bytes, expected {raw_len}")
+        raise CaptureError(f"decompressed {len(raw)} bytes, expected {raw_len}")
+    return w, h, raw, zlen, raw_len, stats
+
+
+def cmd_screenshot(s, out, blur=(), attempts=3):
+    # A log line from another task can land inside the base64 stream (e.g. on
+    # pages that are busy); the length checks catch it, so just try again.
+    for attempt in range(1, attempts + 1):
+        try:
+            w, h, raw, zlen, raw_len, stats = _capture(s)
+            break
+        except (CaptureError, TimeoutError, base64.binascii.Error, zlib.error) as e:
+            if attempt == attempts:
+                sys.exit(f"screenshot failed: {e}")
+            print(f"retrying screenshot ({e})", file=sys.stderr)
+            time.sleep(0.3)
 
     rgb = rgb565le_to_rgb(raw, w, h)
     for region in blur:

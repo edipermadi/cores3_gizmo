@@ -15,6 +15,9 @@
  *  - ui_spectrum.c "Spectrum" screen: live microphone spectrum
  *  - ui_clock.c    "Clock" screen: analog / digital, 24h / 12h
  *  - ui_game.c     "Hopper" mini game (original endless runner)
+ *  - ui_life.c     "Life" 2D cellular automata (Game of Life and variants)
+ *  - ui_cyclic.c   "Cyclic" cyclic cellular automaton (spirals)
+ *  - ui_brain.c    "Brain" Generations automata (Brian's Brain, Star Wars, Frogs)
  */
 
 #include <stdbool.h>
@@ -93,6 +96,9 @@ void ui_show_diag(void);
 void ui_show_spectrum(void);
 void ui_show_clock(void);
 void ui_show_game(void);
+void ui_show_life(void);
+void ui_show_cyclic(void);
+void ui_show_brain(void);
 
 /**
  * Pages other than home are full screen with no back button: HMI button 1
@@ -123,6 +129,24 @@ void ui_settings_refresh_group(void);
 void ui_settings_on_show(void);
 
 void ui_display_tab_create(lv_obj_t *page);
+
+lv_obj_t *ui_brain_create(void);
+lv_group_t *ui_brain_group(void);
+/** Start / stop the simulation with the screen. */
+void ui_brain_on_show(void);
+void ui_brain_on_hide(void);
+
+lv_obj_t *ui_cyclic_create(void);
+lv_group_t *ui_cyclic_group(void);
+/** Start / stop the simulation with the screen. */
+void ui_cyclic_on_show(void);
+void ui_cyclic_on_hide(void);
+
+lv_obj_t *ui_life_create(void);
+lv_group_t *ui_life_group(void);
+/** Start / stop the simulation with the screen. */
+void ui_life_on_show(void);
+void ui_life_on_hide(void);
 
 lv_obj_t *ui_game_create(void);
 lv_group_t *ui_game_group(void);

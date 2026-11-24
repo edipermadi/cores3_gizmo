@@ -18,8 +18,9 @@ tap()   { $G touch "$1" "$2" >/dev/null; sleep "${3:-0.6}"; }
 swipe() { $G swipe "$1" "$2" "$3" "$4" 300 >/dev/null; sleep 0.8; }
 shot()  { local name=$1; shift; $G screenshot -o "$OUT/$name.png" "$@"; }
 
-page1() { swipe 60 120 260 120; }    # home: swipe right -> page 1
-page2() { swipe 260 120 60 120; }    # home: swipe left  -> page 2
+page1() { swipe 60 120 260 120; swipe 60 120 260 120; }    # home -> page 1
+pagel() { swipe 260 120 60 120; swipe 260 120 60 120; }    # home -> last page (system)
+page2() { page1; swipe 260 120 60 120; }                    # home -> page 2
 back()  { swipe 40 200 260 200; }    # full-screen page: swipe right -> home
 
 # Full-screen pages: tab bar at the top, option buttons at the bottom.
@@ -31,13 +32,15 @@ BTN_LEFT="84 217"
 # turns the launcher page, which page1/page2 below take care of).
 back
 
-# Home, both launcher pages
+# Home launcher pages
 page1
 shot home
 page2
 shot home_page2
+pagel
+shot home_page3
 
-# Settings (page 2, first icon) -> Display tab
+# Settings (last page, first icon) -> Display tab
 tap 60 98
 tap $TAB_LEFT
 shot settings_display
@@ -53,7 +56,7 @@ shot settings_network \
 tap $TAB_LEFT
 back
 
-# Diagnostics (page 2, second icon) -> I2C and Power tabs
+# Diagnostics (last page, second icon) -> I2C and Power tabs
 tap 160 98 1.0
 tap $TAB_LEFT 1.0
 shot diag_i2c
@@ -74,6 +77,13 @@ back
 tap 260 98 1.0
 shot game
 back
+
+# Life (page 2, first icon): let it evolve a little.
+page2
+tap 60 98 4.0
+shot life
+back
+page1
 
 # Spectrum (page 1, second icon): capture the current view, toggle, capture.
 tap 160 98 2.5

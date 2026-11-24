@@ -2,7 +2,8 @@
  * Home screen: launcher with horizontally swipeable pages.
  *
  *   page 1   Clock, Spectrum, Hopper (apps)
- *   page 2   Settings, Diagnostics (system)
+ *   page 2   Life, Cyclic, Brain (toys)
+ *   page 3   Settings, Diagnostics (system, always the last page)
  *
  * A tileview holds one tile per page; dots at the bottom show the active page.
  * Touch: swipe left/right. Encoder: rotate through all icons in page order;
@@ -11,7 +12,7 @@
  */
 #include "ui_priv.h"
 
-#define PAGE_COUNT 2
+#define PAGE_COUNT 3
 #define DOTS_H     16
 
 static lv_obj_t *s_tileview;
@@ -28,6 +29,24 @@ static void open_clock_cb(lv_event_t *e)
 {
     (void)e;
     ui_show_clock();
+}
+
+static void open_brain_cb(lv_event_t *e)
+{
+    (void)e;
+    ui_show_brain();
+}
+
+static void open_cyclic_cb(lv_event_t *e)
+{
+    (void)e;
+    ui_show_cyclic();
+}
+
+static void open_life_cb(lv_event_t *e)
+{
+    (void)e;
+    ui_show_life();
 }
 
 static void open_game_cb(lv_event_t *e)
@@ -180,10 +199,16 @@ lv_obj_t *ui_home_create(lv_group_t *group)
     create_app_icon(s_tiles[0], group, LV_SYMBOL_AUDIO, "Spectrum", open_spectrum_cb);
     create_app_icon(s_tiles[0], group, LV_SYMBOL_PLAY, "Hopper", open_game_cb);
 
-    /* Page 2: system */
+    /* Page 2: toys */
     s_tiles[1] = add_page(1);
-    create_app_icon(s_tiles[1], group, LV_SYMBOL_SETTINGS, "Settings", open_settings_cb);
-    create_app_icon(s_tiles[1], group, LV_SYMBOL_EYE_OPEN, "Diagnostics", open_diag_cb);
+    create_app_icon(s_tiles[1], group, LV_SYMBOL_SHUFFLE, "Life", open_life_cb);
+    create_app_icon(s_tiles[1], group, LV_SYMBOL_REFRESH, "Cyclic", open_cyclic_cb);
+    create_app_icon(s_tiles[1], group, LV_SYMBOL_CHARGE, "Brain", open_brain_cb);
+
+    /* Last page: system (keep Settings / Diagnostics at the end as pages grow) */
+    s_tiles[PAGE_COUNT - 1] = add_page(PAGE_COUNT - 1);
+    create_app_icon(s_tiles[PAGE_COUNT - 1], group, LV_SYMBOL_SETTINGS, "Settings", open_settings_cb);
+    create_app_icon(s_tiles[PAGE_COUNT - 1], group, LV_SYMBOL_EYE_OPEN, "Diagnostics", open_diag_cb);
 
     /* Page indicator dots, on top of the tileview. */
     lv_obj_t *dots = lv_obj_create(scr);

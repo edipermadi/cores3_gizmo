@@ -5,7 +5,8 @@
  * @brief AXP2101 battery status and charge control (private to gizmo_core).
  *
  * A background task polls the PMIC every second, enables battery charging only
- * while external (USB) power is present, and caches the battery state. It also
+ * while external (USB) power is present and the battery is not full (charging
+ * stops at 100 % and resumes at 95 %), and caches the battery state. It also
  * watches the power key (left side button): a short press powers off.
  */
 

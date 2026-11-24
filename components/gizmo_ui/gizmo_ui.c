@@ -11,6 +11,9 @@ static lv_obj_t *s_diag_scr;
 static lv_obj_t *s_spectrum_scr;
 static lv_obj_t *s_clock_scr;
 static lv_obj_t *s_game_scr;
+static lv_obj_t *s_life_scr;
+static lv_obj_t *s_cyclic_scr;
+static lv_obj_t *s_brain_scr;
 static lv_group_t *s_home_group;
 
 /* ---------- encoder groups ---------- */
@@ -105,6 +108,9 @@ void ui_show_home(void)
     ui_spectrum_on_hide();
     ui_clock_on_hide();
     ui_game_on_hide();
+    ui_life_on_hide();
+    ui_cyclic_on_hide();
+    ui_brain_on_hide();
 
     /* Persist on leave as well: the encoder back button skips the slider's
      * release event, which is where touch input saves. */
@@ -121,6 +127,27 @@ void ui_show_settings(void)
     ui_settings_on_show();
     ui_use_group(ui_settings_group());
     lv_screen_load_anim(s_settings_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
+}
+
+void ui_show_brain(void)
+{
+    ui_brain_on_show();
+    ui_use_group(ui_brain_group());
+    lv_screen_load_anim(s_brain_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
+}
+
+void ui_show_cyclic(void)
+{
+    ui_cyclic_on_show();
+    ui_use_group(ui_cyclic_group());
+    lv_screen_load_anim(s_cyclic_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
+}
+
+void ui_show_life(void)
+{
+    ui_life_on_show();
+    ui_use_group(ui_life_group());
+    lv_screen_load_anim(s_life_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, UI_ANIM_MS, 0, false);
 }
 
 void ui_show_game(void)
@@ -164,6 +191,9 @@ void gizmo_ui_init(void)
     s_spectrum_scr = ui_spectrum_create();
     s_clock_scr = ui_clock_create();
     s_game_scr = ui_game_create();
+    s_life_scr = ui_life_create();
+    s_cyclic_scr = ui_cyclic_create();
+    s_brain_scr = ui_brain_create();
 
     ui_status_start();
     ui_use_group(s_home_group);
