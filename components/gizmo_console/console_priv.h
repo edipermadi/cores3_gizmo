@@ -6,3 +6,4 @@
 
 esp_err_t cmd_screenshot_register(void);
 esp_err_t cmd_touch_register(void);
+esp_err_t cmd_i2c_register(void);

@@ -4,6 +4,9 @@
 #include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "hmi.h"
 #include "power.h"
 #include "settings.h"
@@ -159,7 +162,7 @@ const char *gizmo_core_i2c_device_name(uint8_t addr)
     return NULL;
 }
 
-int gizmo_core_i2c_scan(uint8_t *addrs, int max)
+static int i2c_scan_here(uint8_t *addrs, int max)
 {
     i2c_master_bus_handle_t bus;
     if (i2c_master_get_bus_handle(BSP_I2C_NUM, &bus) != ESP_OK) {
@@ -171,6 +174,53 @@ int gizmo_core_i2c_scan(uint8_t *addrs, int max)
         if (i2c_master_probe(bus, a, 20) == ESP_OK) {
             addrs[n++] = a;
         }
+    }
+    return n;
+}
+
+typedef struct {
+    uint8_t *addrs;
+    int max;
+    int n;
+    SemaphoreHandle_t done;
+} scan_job_t;
+
+static void scan_worker(void *arg)
+{
+    scan_job_t *job = arg;
+    job->n = i2c_scan_here(job->addrs, job->max);
+    xSemaphoreGive(job->done);
+    vTaskDelete(NULL);
+}
+
+/*
+ * i2c_master_probe() must run on the core that owns the I2C interrupt (core 0,
+ * where the BSP created the bus). Called from core 1 (e.g. the LVGL task) it
+ * loses a race with the ISR and reports every other address as present
+ * (measured: 9 devices from core 0, 53-55 from core 1). Normal device
+ * transfers are not affected, only the probe's NACK detection.
+ */
+#define I2C_BUS_CORE 0
+
+int gizmo_core_i2c_scan(uint8_t *addrs, int max)
+{
+    int n;
+    if (xPortGetCoreID() == I2C_BUS_CORE) {
+        n = i2c_scan_here(addrs, max);
+    } else {
+        scan_job_t job = { .addrs = addrs, .max = max, .n = -1,
+                           .done = xSemaphoreCreateBinary() };
+        if (!job.done) {
+            return -1;
+        }
+        if (xTaskCreatePinnedToCore(scan_worker, "i2c_scan", 3072, &job, 5, NULL,
+                                    I2C_BUS_CORE) != pdPASS) {
+            vSemaphoreDelete(job.done);
+            return -1;
+        }
+        xSemaphoreTake(job.done, portMAX_DELAY);
+        vSemaphoreDelete(job.done);
+        n = job.n;
     }
     ESP_LOGI(TAG, "I2C scan: %d device(s)", n);
     return n;

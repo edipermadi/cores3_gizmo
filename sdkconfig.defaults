@@ -15,6 +15,9 @@ CONFIG_LV_FONT_MONTSERRAT_14=y
 CONFIG_LV_FONT_MONTSERRAT_20=y
 CONFIG_LV_FONT_MONTSERRAT_28=y
 CONFIG_LV_DEFAULT_FONT_MONTSERRAT_14=y
+# Allocate from the system heap (8 MB PSRAM) instead of LVGL's fixed 64 KB
+# pool; when that pool ran out, rendering spun forever retrying an allocation.
+CONFIG_LV_USE_CLIB_MALLOC=y
 
 # Console REPL (gizmo_console) on the USB-Serial-JTAG port
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
