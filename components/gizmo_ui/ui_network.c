@@ -54,6 +54,8 @@ static lv_obj_t *small_button(lv_obj_t *parent, const char *symbol, lv_event_cb_
     lv_obj_set_size(btn, ROW_H, ROW_H);
     lv_obj_set_style_radius(btn, 8, 0);
     lv_obj_set_style_bg_color(btn, UI_COLOR_CARD, 0);
+    /* Card-coloured button: the base theme's white button text would vanish in light mode. */
+    lv_obj_set_style_text_color(btn, UI_COLOR_TEXT, 0);
     lv_obj_set_style_shadow_width(btn, 0, 0);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *lbl = lv_label_create(btn);
@@ -132,6 +134,8 @@ static void dialog_open(const char *ssid)
     lv_obj_set_size(eye, 40, 28);
     lv_obj_align(eye, LV_ALIGN_TOP_RIGHT, 0, 0);
     lv_obj_set_style_bg_color(eye, UI_COLOR_CARD, 0);
+    /* Card-coloured button: the base theme's white button text would vanish in light mode. */
+    lv_obj_set_style_text_color(eye, UI_COLOR_TEXT, 0);
     lv_obj_set_style_shadow_width(eye, 0, 0);
     lv_obj_add_event_cb(eye, show_password_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *eye_lbl = lv_label_create(eye);

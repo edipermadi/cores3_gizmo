@@ -11,10 +11,12 @@ network name, IP address, timezone and nearby networks are blurred on capture.
 
 | | |
 | --- | --- |
-| ![Home](assets/screenshots/home.png) | ![Settings, Display tab](assets/screenshots/settings_display.png) |
-| Home: clock, Wi-Fi, charging and battery in the top bar | Settings → Display: brightness |
-| ![Settings, Network tab](assets/screenshots/settings_network.png) | |
-| Settings → Network: Wi-Fi status, timezone, networks (private text blurred) | |
+| ![Home, page 1](assets/screenshots/home.png) | ![Home, page 2](assets/screenshots/home_page2.png) |
+| Home page 1 (apps); the status bar is shown on home only | Home page 2 (system); swipe between pages |
+| ![Settings, Display tab](assets/screenshots/settings_display.png) | ![Settings, Network tab](assets/screenshots/settings_network.png) |
+| Settings → Display: brightness, dark / light mode | Settings → Network: Wi-Fi status, timezone, networks (private text blurred) |
+| ![Clock, digital](assets/screenshots/clock_digital.png) | ![Clock, analog](assets/screenshots/clock_analog.png) |
+| Clock, digital (24h or 12h) | Clock, analog |
 | ![Spectrum, bars](assets/screenshots/spectrum_bars.png) | ![Spectrum, waterfall](assets/screenshots/spectrum_waterfall.png) |
 | Spectrum, bars view with peak hold | Spectrum, waterfall view (tap or encoder push to switch) |
 | ![Diagnostics, I2C tab](assets/screenshots/diag_i2c.png) | ![Diagnostics, Power tab](assets/screenshots/diag_power.png) |
@@ -39,10 +41,10 @@ network name, IP address, timezone and nearby networks are blurred on capture.
 
 | Input | Action |
 | --- | --- |
-| Touch | Tap icons and buttons, drag the slider |
-| Encoder rotate | Move focus; changes the value while editing the slider |
+| Touch | Tap icons and buttons, drag the slider; swipe the home screen between pages; **swipe right on any other page to go back** |
+| Encoder rotate | Move focus (across both home pages); changes the value while editing the slider |
 | Encoder push | Activate the focused item; on the slider, enter or leave edit mode |
-| HMI button 1 | Back |
+| HMI button 1 | Back (pages other than home are full screen, without a back button) |
 | HMI button 2 | Same as encoder push |
 
 On the Network tab, pick a network to connect; secured networks ask for a
@@ -50,7 +52,14 @@ password on an on-screen keyboard (encoder: rotate over keys, push to type).
 The last network that connected is remembered and rejoined at boot;
 the ✕ button forgets it.
 
-The home top bar shows a 24h clock. At boot the time comes from the
+Settings → Display has a **Dark mode** switch. Changing it saves the choice
+and restarts the device (~2 s) so every screen is rebuilt in the new palette.
+
+The Clock page (home page 1) shows an analog or digital clock; the buttons
+at the bottom switch **Analog/Digital** and **24h/12h**. Both choices are
+saved, and 24h/12h also applies to the home top bar.
+
+The home top bar shows the time. At boot the time comes from the
 battery-backed BM8563 RTC; once Wi-Fi connects it is synced over NTP and the
 RTC is updated. `--:--` means neither source has a valid time yet.
 Pick your timezone in Settings → Network (e.g. `Asia/Singapore`); it is saved

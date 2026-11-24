@@ -30,9 +30,50 @@ static void brightness_released_cb(lv_event_t *e)
     }
 }
 
+static void dark_mode_cb(lv_event_t *e)
+{
+    lv_obj_t *sw = lv_event_get_target(e);
+    bool dark = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    if (dark != ui_dark_mode()) {
+        ESP_LOGI(TAG, "Switching to %s mode (restart)", dark ? "dark" : "light");
+        ui_set_dark_mode_and_restart(dark);
+    }
+}
+
+/** Card: [moon] Dark mode ......... [switch]. Changing it restarts the device. */
+static void create_theme_card(lv_obj_t *page)
+{
+    lv_obj_t *card = lv_obj_create(page);
+    lv_obj_set_size(card, LV_PCT(100), 56);
+    lv_obj_set_style_bg_color(card, UI_COLOR_CARD, 0);
+    lv_obj_set_style_border_width(card, 0, 0);
+    lv_obj_set_style_radius(card, 12, 0);
+    lv_obj_set_style_pad_hor(card, 16, 0);
+    lv_obj_set_style_pad_ver(card, 0, 0);
+    lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(card);
+    lv_label_set_text(title, LV_SYMBOL_EYE_CLOSE "  Dark mode");
+    lv_obj_align(title, LV_ALIGN_LEFT_MID, 0, 0);
+
+    lv_obj_t *sw = lv_switch_create(card);
+    lv_obj_set_size(sw, 52, 28);
+    lv_obj_align(sw, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_set_style_bg_color(sw, UI_COLOR_ACCENT, LV_PART_INDICATOR | LV_STATE_CHECKED);
+    if (ui_dark_mode()) {
+        lv_obj_add_state(sw, LV_STATE_CHECKED);
+    }
+    /* Keep gesture bubbling (unlike the slider): a swipe that starts on the
+     * switch is then taken as "back" and LVGL drops the tap, instead of the
+     * release toggling dark mode (and restarting the device). */
+    lv_obj_add_event_cb(sw, dark_mode_cb, LV_EVENT_VALUE_CHANGED, NULL);
+}
+
 void ui_display_tab_create(lv_obj_t *page)
 {
     lv_obj_set_style_pad_all(page, 12, 0);
+    lv_obj_set_style_pad_row(page, 10, 0);
+    lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
     lv_obj_remove_flag(page, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Snap the stored value to the slider's step. */
@@ -66,6 +107,10 @@ void ui_display_tab_create(lv_obj_t *page)
     lv_obj_set_style_bg_color(slider, UI_COLOR_ACCENT, LV_PART_KNOB);
     /* Larger touch target for the knob. */
     lv_obj_set_style_pad_all(slider, 6, LV_PART_KNOB);
+    /* Horizontal drags must not be taken as the "back" swipe. */
+    lv_obj_remove_flag(slider, LV_OBJ_FLAG_GESTURE_BUBBLE);
     lv_obj_add_event_cb(slider, brightness_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_event_cb(slider, brightness_released_cb, LV_EVENT_RELEASED, NULL);
+
+    create_theme_card(page);
 }

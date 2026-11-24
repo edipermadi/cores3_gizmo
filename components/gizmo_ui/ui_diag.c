@@ -1,13 +1,14 @@
 /*
- * "Diagnostics" screen: header with back button, then a tab view.
+ * "Diagnostics" screen: full-screen tab view (no header; back = HMI button 1
+ * or swipe right).
  *
  *   I2C    internal-bus scan: responding addresses with known device names,
  *          rescanned each time the tab is shown and on demand.
  *   Power  AXP2101 readings (battery/USB/system voltages, charge state,
  *          die temperature), refreshed every second while visible.
  *
- * As in Settings, the encoder group holds the back button, the tab buttons
- * and the active tab's widgets only, rebuilt when the tab or its list changes.
+ * As in Settings, the encoder group holds the tab buttons and the active
+ * tab's widgets only, rebuilt when the tab or its list changes.
  */
 #include <stdio.h>
 
@@ -20,7 +21,6 @@
 enum { TAB_I2C, TAB_POWER };
 
 static lv_obj_t *s_scr;
-static lv_obj_t *s_header;
 static lv_obj_t *s_tabview;
 static lv_group_t *s_group;
 
@@ -48,8 +48,8 @@ static lv_obj_t *active_page(void)
 
 static void refresh_group(void)
 {
-    lv_obj_t *roots[] = { s_header, lv_tabview_get_tab_bar(s_tabview), active_page() };
-    ui_group_rebuild(s_group, roots, 3);
+    lv_obj_t *roots[] = { lv_tabview_get_tab_bar(s_tabview), active_page() };
+    ui_group_rebuild(s_group, roots, 2);
 }
 
 static lv_obj_t *transparent_row(lv_obj_t *parent, int32_t h)
@@ -125,6 +125,8 @@ static void i2c_tab_create(lv_obj_t *page)
     lv_obj_set_size(btn, ROW_H, ROW_H);
     lv_obj_set_style_radius(btn, 8, 0);
     lv_obj_set_style_bg_color(btn, UI_COLOR_CARD, 0);
+    /* Card-coloured button: the base theme's white button text would vanish in light mode. */
+    lv_obj_set_style_text_color(btn, UI_COLOR_TEXT, 0);
     lv_obj_set_style_shadow_width(btn, 0, 0);
     lv_obj_add_event_cb(btn, i2c_rescan_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *lbl = lv_label_create(btn);
@@ -242,12 +244,6 @@ static void tab_changed_cb(lv_event_t *e)
     on_tab_shown();
 }
 
-static void back_cb(lv_event_t *e)
-{
-    (void)e;
-    ui_show_home();
-}
-
 lv_group_t *ui_diag_group(void)
 {
     return s_group;
@@ -263,12 +259,10 @@ lv_obj_t *ui_diag_create(void)
     s_scr = ui_create_screen();
     s_group = lv_group_create();
 
-    s_header = ui_create_header(s_scr, "Diagnostics");
-    ui_create_back_button(s_header, back_cb);
+    ui_enable_back_gesture(s_scr);
 
     s_tabview = lv_tabview_create(s_scr);
-    lv_obj_set_size(s_tabview, LV_PCT(100), lv_display_get_vertical_resolution(NULL) - UI_HEADER_H);
-    lv_obj_align(s_tabview, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_size(s_tabview, LV_PCT(100), LV_PCT(100));
     lv_tabview_set_tab_bar_size(s_tabview, TAB_BAR_H);
     lv_obj_set_style_bg_color(s_tabview, UI_COLOR_BG, 0);
     lv_obj_set_style_bg_color(lv_tabview_get_tab_bar(s_tabview), UI_COLOR_BG, 0);

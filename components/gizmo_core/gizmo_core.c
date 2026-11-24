@@ -4,6 +4,7 @@
 #include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -141,6 +142,14 @@ esp_err_t gizmo_core_tz_set(int index)
     return timesync_tz_set(index);
 }
 
+void gizmo_core_restart(void)
+{
+    ESP_LOGI(TAG, "Restarting");
+    /* Let the caller's last frame (e.g. the switch animation) reach the panel. */
+    vTaskDelay(pdMS_TO_TICKS(300));
+    esp_restart();
+}
+
 void gizmo_core_power_off(void)
 {
     power_off();
@@ -269,6 +278,16 @@ esp_err_t gizmo_core_leds_off(void)
 {
     leds_clear();
     return leds_show();
+}
+
+uint8_t gizmo_core_pref_get_u8(const char *key, uint8_t def)
+{
+    return settings_get_u8(key, def);
+}
+
+esp_err_t gizmo_core_pref_set_u8(const char *key, uint8_t value)
+{
+    return settings_set_u8(key, value);
 }
 
 lv_indev_t *gizmo_core_get_encoder(void)

@@ -14,6 +14,7 @@ CONFIG_FREERTOS_HZ=1000
 CONFIG_LV_FONT_MONTSERRAT_14=y
 CONFIG_LV_FONT_MONTSERRAT_20=y
 CONFIG_LV_FONT_MONTSERRAT_28=y
+CONFIG_LV_FONT_MONTSERRAT_48=y
 CONFIG_LV_DEFAULT_FONT_MONTSERRAT_14=y
 # Allocate from the system heap (8 MB PSRAM) instead of LVGL's fixed 64 KB
 # pool; when that pool ran out, rendering spun forever retrying an allocation.

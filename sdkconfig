@@ -3871,10 +3871,6 @@ CONFIG_GIZMO_LED_COUNT=10
 # default:
 CONFIG_GIZMO_LED_BRIGHTNESS=48
 # default:
-# CONFIG_GIZMO_VU_SWAP_SIDES is not set
-# default:
-# CONFIG_GIZMO_VU_REVERSE is not set
-# default:
 # CONFIG_GIZMO_VU_SWAP_MICS is not set
 # end of Gizmo core
 
@@ -4386,8 +4382,7 @@ CONFIG_LV_FONT_MONTSERRAT_28=y
 # CONFIG_LV_FONT_MONTSERRAT_44 is not set
 # default:
 # CONFIG_LV_FONT_MONTSERRAT_46 is not set
-# default:
-# CONFIG_LV_FONT_MONTSERRAT_48 is not set
+CONFIG_LV_FONT_MONTSERRAT_48=y
 # default:
 # CONFIG_LV_FONT_MONTSERRAT_28_COMPRESSED is not set
 # default:

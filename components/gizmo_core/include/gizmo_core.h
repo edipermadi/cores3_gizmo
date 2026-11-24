@@ -183,6 +183,9 @@ int gizmo_core_tz_get(void);
  */
 esp_err_t gizmo_core_tz_set(int index);
 
+/** Restart the device (settings are already saved; nothing else to flush). */
+void gizmo_core_restart(void);
+
 /**
  * @brief Switch the device off (backlight off, then PMIC power-off).
  *
@@ -228,6 +231,17 @@ esp_err_t gizmo_core_leds_set(int index, uint8_t r, uint8_t g, uint8_t b);
 
 /** Switch all base LEDs off. */
 esp_err_t gizmo_core_leds_off(void);
+
+/**
+ * @brief Read a small persistent preference (e.g. a UI option).
+ *
+ * @param key NVS key, at most 15 characters.
+ * @param def Value returned when the key has never been set.
+ */
+uint8_t gizmo_core_pref_get_u8(const char *key, uint8_t def);
+
+/** Persist a small preference (NVS). */
+esp_err_t gizmo_core_pref_set_u8(const char *key, uint8_t value);
 
 /**
  * @brief LVGL encoder input from the Module HMI.

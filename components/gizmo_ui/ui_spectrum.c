@@ -6,15 +6,15 @@
  *   Waterfall  spectrogram: newest spectrum on the top row, history scrolling
  *              down; frequency left (60 Hz) to right (8 kHz), colour = level.
  *
- *   [<] Spectrum                      [status]
+ * Full screen (no header; back = HMI button 1 or swipe right):
  *   Peak 1.25 kHz  -34 dB        In -18 dBFS
- *   [ plot area 304 x 140 ]
+ *   [ plot area 304 x 184 ]
  *   100        1k            4k      8k
  *
  * The analyser (gizmo_core) runs only while this screen is shown. In bars
  * mode bars rise instantly and fall at BAR_FALL per frame; peak markers hold
  * PEAK_HOLD frames then fall at PEAK_FALL per frame. The waterfall adds one
- * row per new analyser frame (~31 rows/s, so ~4.5 s of history).
+ * row per new analyser frame (~31 rows/s, so ~6 s of history).
  */
 #include <math.h>
 #include <stdio.h>
@@ -29,8 +29,8 @@ static const char *TAG = "ui_spectrum";
 #define FRAME_MS    33
 #define AREA_X      8
 #define AREA_W      304
-#define AREA_Y      (UI_HEADER_H + 30)
-#define AREA_H      140
+#define AREA_Y      30
+#define AREA_H      184
 #define BAR_GAP     2
 #define BAR_FALL    0.035f
 #define PEAK_FALL   0.008f
@@ -198,12 +198,6 @@ static void toggle_cb(lv_event_t *e)
     set_mode(s_mode == MODE_BARS ? MODE_WATERFALL : MODE_BARS);
 }
 
-static void back_cb(lv_event_t *e)
-{
-    (void)e;
-    ui_show_home();
-}
-
 static void axis_label(lv_obj_t *parent, float hz, const char *text)
 {
     int band = (int)(logf(hz / F_MIN) / logf(F_MAX / F_MIN) * GIZMO_SPECTRUM_BANDS);
@@ -246,7 +240,7 @@ void ui_spectrum_on_show(void)
         s_hold[i] = 0;
     }
     waterfall_clear();
-    /* Encoder push toggles the view right away; rotate to reach "back". */
+    /* Encoder push toggles the view right away. */
     lv_group_focus_obj(s_toggle);
 
     esp_err_t err = gizmo_core_spectrum_start();
@@ -277,15 +271,14 @@ lv_obj_t *ui_spectrum_create(void)
     s_scr = ui_create_screen();
     s_group = lv_group_create();
 
-    lv_obj_t *hdr = ui_create_header(s_scr, "Spectrum");
-    ui_create_back_button(hdr, back_cb);
+    ui_enable_back_gesture(s_scr);
 
     s_info = lv_label_create(s_scr);
-    lv_obj_set_pos(s_info, AREA_X, UI_HEADER_H + 6);
+    lv_obj_set_pos(s_info, AREA_X, 6);
     lv_label_set_text(s_info, "");
 
     s_input = lv_label_create(s_scr);
-    lv_obj_align(s_input, LV_ALIGN_TOP_RIGHT, -AREA_X, UI_HEADER_H + 6);
+    lv_obj_align(s_input, LV_ALIGN_TOP_RIGHT, -AREA_X, 6);
     lv_label_set_text(s_input, "");
     lv_obj_set_style_text_color(s_input, UI_COLOR_SUBTEXT, 0);
 
@@ -327,9 +320,9 @@ lv_obj_t *ui_spectrum_create(void)
     lv_obj_set_pos(s_toggle, AREA_X, AREA_Y);
     lv_obj_add_event_cb(s_toggle, toggle_cb, LV_EVENT_CLICKED, NULL);
 
-    /* Encoder order: back button (header), then the plot. */
-    lv_obj_t *roots[] = { hdr, s_toggle };
-    ui_group_rebuild(s_group, roots, 2);
+    /* Encoder: the plot is the only focusable; push toggles, button 1 = back. */
+    lv_obj_t *roots[] = { s_toggle };
+    ui_group_rebuild(s_group, roots, 1);
 
     /* Baseline and frequency axis (shared by both views) */
     plain_rect(s_scr, AREA_X, AREA_Y + AREA_H, AREA_W, 1, UI_COLOR_CARD);

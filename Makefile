@@ -9,7 +9,7 @@
 #   make screenshot   save the device screen to screenshot.png (OUT=file.png)
 #   make touch X=160 Y=120 [MS=100]   simulate a tap on the device
 #   make swipe X1=40 Y1=120 X2=280 Y2=120 [MS=300]   simulate a drag
-#   make screenshots  re-capture the README screenshots from the device
+#   make screenshots  re-capture the README screenshots from the device (all pages)
 #
 # ESP-IDF is activated per command via IDF_ACTIVATE, so no prior
 # `source export.sh` is needed. Override if IDF lives elsewhere:

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -15,21 +16,48 @@ void ui_add_focusable(lv_group_t *group, lv_obj_t *obj)
     lv_group_add_obj(group, obj);
 }
 
+#define PREF_DARK "ui_dark"
+
+static const ui_palette_t s_dark = {
+    .bg = 0x101418, .header = 0x1c232b, .accent = 0x2f80ed, .text = 0xe8edf2,
+    .subtext = 0x8a97a6, .card = 0x1c232b, .ok = 0x4cd964, .low = 0xff5f57, .dark = true,
+};
+
+/* Light: white cards on a pale grey background, darker green/red for contrast. */
+static const ui_palette_t s_light = {
+    .bg = 0xeef1f5, .header = 0xffffff, .accent = 0x2f80ed, .text = 0x1c232b,
+    .subtext = 0x5f6b7a, .card = 0xffffff, .ok = 0x1f9d55, .low = 0xd93025, .dark = false,
+};
+
+const ui_palette_t *ui_pal = &s_dark;
+
+bool ui_dark_mode(void)
+{
+    return ui_pal->dark;
+}
+
+void ui_set_dark_mode_and_restart(bool dark)
+{
+    gizmo_core_pref_set_u8(PREF_DARK, dark);
+    gizmo_core_restart();
+}
+
 void ui_theme_init(void)
 {
+    ui_pal = gizmo_core_pref_get_u8(PREF_DARK, 1) ? &s_dark : &s_light;
+
     lv_style_init(&s_focus_style);
-    lv_style_set_outline_color(&s_focus_style, UI_COLOR_TEXT);
+    lv_style_set_outline_color(&s_focus_style, ui_pal->dark ? UI_COLOR_TEXT : UI_COLOR_ACCENT);
     lv_style_set_outline_width(&s_focus_style, 2);
     lv_style_set_outline_pad(&s_focus_style, 2);
     lv_style_set_outline_opa(&s_focus_style, LV_OPA_COVER);
 
-    /* Dark theme so widget text defaults to a light colour. The light theme
-     * sets dark-grey text on every container, which overrides the screen's
-     * inherited text colour. */
+    /* LVGL base theme in the same mode. In dark mode this also matters for
+     * readability: the light base theme sets dark-grey text on containers. */
     lv_display_t *disp = lv_display_get_default();
     lv_theme_t *theme = lv_theme_default_init(disp, UI_COLOR_ACCENT,
                                               lv_palette_main(LV_PALETTE_RED),
-                                              true, LV_FONT_DEFAULT);
+                                              ui_pal->dark, LV_FONT_DEFAULT);
     lv_display_set_theme(disp, theme);
 }
 
@@ -156,14 +184,42 @@ static void wifi_apply(const status_widgets_t *w, const gizmo_wifi_status_t *ws)
 static lv_obj_t *s_clocks[MAX_CLOCKS];
 static int s_clock_count;
 
+#define PREF_CLOCK_24H "clk_24h"
+static int s_clock_24h = -1;   /* cached preference; -1 = not loaded */
+
+bool ui_clock_24h(void)
+{
+    if (s_clock_24h < 0) {
+        s_clock_24h = gizmo_core_pref_get_u8(PREF_CLOCK_24H, 1) ? 1 : 0;
+    }
+    return s_clock_24h;
+}
+
+void ui_clock_set_24h(bool on)
+{
+    s_clock_24h = on;
+    gizmo_core_pref_set_u8(PREF_CLOCK_24H, on);
+}
+
+void ui_format_hm(char *buf, size_t len, const struct tm *tm, bool with_ampm)
+{
+    if (ui_clock_24h()) {
+        snprintf(buf, len, "%02d:%02d", tm->tm_hour, tm->tm_min);
+    } else {
+        int h12 = tm->tm_hour % 12 ? tm->tm_hour % 12 : 12;
+        snprintf(buf, len, with_ampm ? "%d:%02d %s" : "%d:%02d", h12, tm->tm_min,
+                 tm->tm_hour < 12 ? "AM" : "PM");
+    }
+}
+
 static void clock_refresh(void)
 {
-    char buf[8] = "--:--";
+    char buf[12] = "--:--";
     if (gizmo_core_time_is_valid()) {
         time_t now = time(NULL);
         struct tm tm;
         localtime_r(&now, &tm);
-        strftime(buf, sizeof(buf), "%H:%M", &tm);
+        ui_format_hm(buf, sizeof(buf), &tm, true);
     }
     for (int i = 0; i < s_clock_count; i++) {
         /* Only touch the label when the text changes, to avoid redraws. */
@@ -276,22 +332,4 @@ lv_obj_t *ui_create_header(lv_obj_t *parent, const char *title)
 
     create_status(hdr);
     return hdr;
-}
-
-lv_obj_t *ui_create_back_button(lv_obj_t *header, lv_event_cb_t cb)
-{
-    lv_obj_t *back = lv_button_create(header);
-    lv_obj_set_size(back, 56, UI_HEADER_H - 10);
-    lv_obj_align(back, LV_ALIGN_LEFT_MID, 6, 0);
-    lv_obj_set_style_bg_opa(back, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_bg_opa(back, LV_OPA_20, LV_STATE_PRESSED);
-    lv_obj_set_style_bg_color(back, UI_COLOR_TEXT, LV_STATE_PRESSED);
-    lv_obj_set_style_shadow_width(back, 0, 0);
-    lv_obj_add_event_cb(back, cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t *lbl = lv_label_create(back);
-    lv_label_set_text(lbl, LV_SYMBOL_LEFT);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
-    lv_obj_center(lbl);
-    return back;
 }
