@@ -1,0 +1,16 @@
+menu "Gizmo core"
+
+    config GIZMO_HMI_COUNTS_PER_STEP
+        int "Module HMI encoder counts per detent"
+        range 1 8
+        default 1
+        help
+            Raw encoder counts the Module HMI reports for one mechanical click.
+            If one click moves focus by more than one item, raise this.
+            Enable debug logging for tag "hmi" to see raw deltas.
+
+    config GIZMO_HMI_REVERSE
+        bool "Reverse Module HMI encoder direction"
+        default n
+
+endmenu

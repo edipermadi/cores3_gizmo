@@ -1,0 +1,37 @@
+# Doxygen config for CoreS3 Gizmo. Only non-default settings are listed.
+# Run via `make docs`; output goes to docs/html/index.html.
+
+PROJECT_NAME           = "CoreS3 Gizmo"
+PROJECT_BRIEF          = "LVGL UI for M5Stack CoreS3 with Module HMI"
+# Set by the Makefile from `git describe`.
+PROJECT_NUMBER         = $(GIZMO_VERSION)
+OUTPUT_DIRECTORY       = docs
+
+INPUT                  = README.md main components
+FILE_PATTERNS          = *.c *.h *.md
+RECURSIVE              = YES
+USE_MDFILE_AS_MAINPAGE = README.md
+EXCLUDE_PATTERNS       = */build/* */managed_components/*
+
+OPTIMIZE_OUTPUT_FOR_C  = YES
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+SOURCE_BROWSER         = YES
+STRIP_FROM_PATH        = .
+
+# Kconfig values are not visible to doxygen; give it the defaults.
+ENABLE_PREPROCESSING   = YES
+PREDEFINED             = CONFIG_GIZMO_HMI_COUNTS_PER_STEP=1 \
+                         CONFIG_GIZMO_HMI_REVERSE=0
+
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_TREEVIEW      = YES
+
+HAVE_DOT               = $(GIZMO_HAVE_DOT)
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_LOGFILE           = docs/warnings.log

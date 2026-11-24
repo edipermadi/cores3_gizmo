@@ -53,3 +53,12 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# ESP-IDF
+build/
+managed_components/
+sdkconfig.old
+.cache/
+
+# Doxygen output
+docs/

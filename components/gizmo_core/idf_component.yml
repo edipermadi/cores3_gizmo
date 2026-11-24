@@ -1,0 +1,10 @@
+dependencies:
+  idf:
+    version: '>=5.4'
+  # Board support package: display, touch, backlight, LVGL port.
+  # Private: only gizmo_core talks to the board.
+  espressif/m5stack_core_s3: ^3
+  # Public: gizmo_core.h exposes the encoder as an lv_indev_t.
+  lvgl/lvgl:
+    version: ^9
+    public: true
