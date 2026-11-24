@@ -125,15 +125,14 @@ static void battery_apply(const status_widgets_t *w, const gizmo_battery_t *b, b
 
 /**
  * Wi-Fi icon, always shown so its state is readable at a glance:
- *   connected   white, dimmed when the signal is weak
- *   connecting  blinking
- *   failed      red
- *   off / idle  faint grey
+ *   connected       white, dimmed when the signal is weak
+ *   connecting      blinking white
+ *   anything else   red (not connected, failed, Wi-Fi off)
  */
 static void wifi_apply(const status_widgets_t *w, const gizmo_wifi_status_t *ws)
 {
-    lv_color_t color = UI_COLOR_SUBTEXT;
-    lv_opa_t opa = LV_OPA_40;
+    lv_color_t color = UI_COLOR_LOW;
+    lv_opa_t opa = LV_OPA_COVER;
 
     switch (ws->state) {
     case GIZMO_WIFI_CONNECTED:
@@ -143,10 +142,6 @@ static void wifi_apply(const status_widgets_t *w, const gizmo_wifi_status_t *ws)
     case GIZMO_WIFI_CONNECTING:
         color = UI_COLOR_TEXT;
         opa = (s_anim_frame & 1) ? LV_OPA_30 : LV_OPA_COVER;
-        break;
-    case GIZMO_WIFI_FAILED:
-        color = UI_COLOR_LOW;
-        opa = LV_OPA_COVER;
         break;
     default:
         break;

@@ -1,0 +1,6 @@
+# CoreS3 (16 MB flash): one app partition using all remaining space.
+# nvs/phy_init keep the stock offsets so stored settings and Wi-Fi survive.
+# Name,    Type, SubType, Offset,   Size
+nvs,       data, nvs,     0x9000,   0x6000
+phy_init,  data, phy,     0xf000,   0x1000
+factory,   app,  factory, 0x10000,  0xFF0000
